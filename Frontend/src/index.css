@@ -1,0 +1,79 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-slate-800 antialiased font-sans overflow-x-hidden selection:bg-primary/20 selection:text-white;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display tracking-tight text-slate-900;
+  }
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+  background: #f1f5f9;
+}
+
+/* Custom Scrollbar - Minimal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+/* Clean UI Utilities */
+.glass {
+  @apply bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl;
+}
+
+.glass-card {
+  @apply bg-white border border-slate-100 rounded-2xl transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5;
+}
+
+.text-gradient {
+  @apply text-slate-900;
+}
+
+/* Stagger utilities */
+.animate-delay-100 {
+  animation-delay: 100ms;
+}
+.animate-delay-200 {
+  animation-delay: 200ms;
+}
+.animate-delay-300 {
+  animation-delay: 300ms;
+}
+.animate-delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Custom Utilities for Polish */
+.btn-primary {
+  @apply bg-primary hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none focus:ring-2 focus:ring-offset-2 focus:ring-primary;
+}
+
+.input-primary {
+  @apply w-full bg-white border border-slate-200 rounded-xl px-5 py-3 text-slate-900 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 shadow-sm;
+}
