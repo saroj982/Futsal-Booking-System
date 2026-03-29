@@ -9,6 +9,7 @@ dotenv.config();
 const authRoutes = require("./routes/auth");
 const futsalRoutes = require("./routes/futsal");
 const bookingRoutes = require("./routes/booking");
+const paymentRoutes = require("./routes/payment");
 const { checkExpiredBookings } = require("./controllers/bookingController");
 
 const app = express();
@@ -39,6 +40,7 @@ mongoose
 app.use("/api/auth", authRoutes);
 app.use("/api/futsals", futsalRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/payments", paymentRoutes);
 
 const PORT = 5000;
 

@@ -199,13 +199,45 @@ function FutsalDetails() {
   const handlePayment = async () => {
     if (!pendingBooking) return;
     try {
-      await axios.post(`/api/bookings/${pendingBooking._id}/pay`);
-      toast.success("Payment Successful! Booking Confirmed.");
-      setPendingBooking(null);
-      fetchBookedSlots(selectedDate);
+      // Initiate eSewa payment
+      const { data } = await axios.post("/api/payments/esewa/initiate", {
+        bookingId: pendingBooking._id,
+      });
+
+      // Create and submit eSewa payment form
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = data.paymentUrl;
+
+      Object.entries(data.paymentData).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || "Payment Failed");
+      const errorData = error.response?.data;
+      
+      if (errorData?.expired) {
+        // Reservation expired - clear pending booking and refresh
+        toast.error("Reservation expired. Please book again.");
+        setPendingBooking(null);
+        setTimeLeft(0);
+        fetchBookedSlots(selectedDate);
+      } else if (errorData?.slotConflict) {
+        // Slots taken by someone else
+        toast.error("These slots were just booked. Please select different times.");
+        setPendingBooking(null);
+        setTimeLeft(0);
+        fetchBookedSlots(selectedDate);
+      } else {
+        toast.error(errorData?.message || "Payment initiation failed");
+      }
     }
   };
 
@@ -369,13 +401,15 @@ function FutsalDetails() {
 
               <button
                 onClick={handlePayment}
-                className="w-full btn-primary py-4 rounded-xl flex items-center justify-center gap-2 group"
+                className="w-full bg-[#60BB46] hover:bg-[#4da936] text-white py-4 rounded-xl flex items-center justify-center gap-3 group transition-all font-bold"
               >
-                <CreditCard
-                  size={18}
-                  className="group-hover:scale-110 transition-transform"
+                <img 
+                  src="https://esewa.com.np/common/images/esewa-logo.png" 
+                  alt="eSewa" 
+                  className="h-5 invert brightness-0 group-hover:scale-110 transition-transform"
+                  onError={(e) => e.target.style.display = 'none'}
                 />
-                <span>Pay & Confirm</span>
+                <span>Pay with eSewa</span>
               </button>
             </div>
           ) : (

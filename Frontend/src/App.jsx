@@ -14,6 +14,8 @@ import LandingPage from "./pages/LandingPage";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import FutsalDetails from "./pages/FutsalDetails";
 import MyBookings from "./pages/MyBookings";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailure from "./pages/PaymentFailure";
 import Navbar from "./components/Navbar";
 import { Toaster } from "react-hot-toast";
 
@@ -21,9 +23,10 @@ function AppContent() {
   const { user } = useContext(AuthContext);
   const location = useLocation();
 
-  // Hide navbar on landing page
+  // Hide navbar on landing page and payment pages
   const isLandingPage = location.pathname === "/";
-  const showNavbar = user || !isLandingPage;
+  const isPaymentPage = location.pathname.startsWith("/payment");
+  const showNavbar = user || (!isLandingPage && !isPaymentPage);
 
   return (
     <>
@@ -87,6 +90,8 @@ function AppContent() {
               }
             />
             <Route path="/futsal/:id" element={<FutsalDetails />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/failure" element={<PaymentFailure />} />
           </Routes>
         </div>
       </div>

@@ -11,6 +11,7 @@ import {
   CheckCircle,
   XCircle,
   CreditCard,
+  RefreshCw,
 } from "lucide-react";
 
 const BookingItem = ({ booking, onPaymentSuccess }) => {
@@ -41,12 +42,36 @@ const BookingItem = ({ booking, onPaymentSuccess }) => {
 
   const handlePay = async () => {
     try {
-      await axios.post(`/api/bookings/${booking._id}/pay`);
-      toast.success("Payment Successful!");
-      if (onPaymentSuccess) onPaymentSuccess();
+      // Initiate eSewa payment
+      const { data } = await axios.post("/api/payments/esewa/initiate", {
+        bookingId: booking._id,
+      });
+
+      // Create and submit eSewa payment form
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = data.paymentUrl;
+
+      Object.entries(data.paymentData).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || "Payment Failed");
+      const errorData = error.response?.data;
+      
+      if (errorData?.expired || errorData?.slotConflict) {
+        toast.error(errorData.message);
+        if (onPaymentSuccess) onPaymentSuccess(); // Refresh list
+      } else {
+        toast.error(errorData?.message || "Payment initiation failed");
+      }
     }
   };
 
@@ -78,6 +103,13 @@ const BookingItem = ({ booking, onPaymentSuccess }) => {
       icon: XCircle,
       label: "Cancelled",
     },
+    refund_pending: {
+      bg: "bg-orange-500/10",
+      text: "text-orange-400",
+      border: "border-orange-500/20",
+      icon: RefreshCw,
+      label: "Refund Pending",
+    },
   };
 
   const status = statusConfig[booking.status] || statusConfig.cancelled;
@@ -92,7 +124,9 @@ const BookingItem = ({ booking, onPaymentSuccess }) => {
             ? "bg-green-500"
             : booking.status === "pending"
               ? "bg-yellow-500"
-              : "bg-red-500"
+              : booking.status === "refund_pending"
+                ? "bg-orange-500"
+                : "bg-red-500"
         }`}
       ></div>
 
@@ -121,6 +155,20 @@ const BookingItem = ({ booking, onPaymentSuccess }) => {
               </span>
             </span>
           </div>
+
+          {/* Refund reason if applicable */}
+          {booking.status === "refund_pending" && booking.refundReason && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-sm">
+              <p className="text-orange-700">
+                <span className="font-medium">Refund reason:</span> {booking.refundReason}
+              </p>
+              {booking.refundAmount && (
+                <p className="text-orange-600 mt-1">
+                  Refund amount: <span className="font-bold">NPR {booking.refundAmount}</span>
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-3 w-full md:w-auto mt-2 md:mt-0">
@@ -129,7 +177,7 @@ const BookingItem = ({ booking, onPaymentSuccess }) => {
               Total
             </span>
             <span className="text-2xl font-display font-bold text-slate-900">
-              ${booking.totalPrice}
+              NPR {booking.totalPrice}
             </span>
           </div>
 
@@ -140,10 +188,16 @@ const BookingItem = ({ booking, onPaymentSuccess }) => {
               </p>
               <button
                 onClick={handlePay}
-                className="btn-primary py-2.5 px-6 text-sm w-full md:w-auto flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40"
+                className="bg-[#60BB46] hover:bg-[#4da936] text-white py-2.5 px-6 text-sm w-full md:w-auto flex items-center justify-center gap-2 rounded-xl font-bold transition-all"
               >
-                <CreditCard size={16} /> Pay Now
+                <CreditCard size={16} /> Pay with eSewa
               </button>
+            </div>
+          )}
+
+          {booking.status === "refund_pending" && (
+            <div className="text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg text-center">
+              Refund processing (3-5 business days)
             </div>
           )}
         </div>
