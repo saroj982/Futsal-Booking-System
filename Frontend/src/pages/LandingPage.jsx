@@ -18,6 +18,7 @@ import {
   Filter,
   ChevronRight,
   Map as MapIcon,
+  Image,
 } from "lucide-react";
 
 function LandingPage() {
@@ -94,7 +95,7 @@ function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header/Navigation */}
-      <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm shadow-sm z-50">
+      <header className="fixed top-0 left-0 right-0 bg-gray-50 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             {/* Logo - Click to refresh */}
@@ -102,7 +103,7 @@ function LandingPage() {
               onClick={() => window.location.reload()}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              <div className="bg-emerald-500 p-2.5 rounded-xl">
+              <div className="bg-blue-500 p-2 rounded-lg">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-semibold text-gray-900">
@@ -111,39 +112,37 @@ function LandingPage() {
             </button>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden md:flex items-center gap-12">
               <button
                 onClick={() => scrollToSection("home")}
-                className="text-gray-600 hover:text-emerald-600 transition-colors font-medium"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
               >
                 Home
               </button>
               <button
                 onClick={() => scrollToSection("features")}
-                className="text-gray-600 hover:text-emerald-600 transition-colors font-medium"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
               >
                 Features
               </button>
               <button
+                onClick={() => scrollToSection("location")}
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Location
+              </button>
+              <button
                 onClick={() => scrollToSection("contact")}
-                className="text-gray-600 hover:text-emerald-600 transition-colors font-medium"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
               >
                 Contact
               </button>
-              <div className="flex items-center gap-3 ml-4">
-                <button
-                  onClick={handleLogin}
-                  className="text-gray-700 hover:text-emerald-600 font-medium transition-colors"
-                >
-                  Login
-                </button>
-                <button
-                  onClick={handleGetStarted}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
-                >
-                  Get Started
-                </button>
-              </div>
+              <button
+                onClick={handleGetStarted}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-200 ml-4"
+              >
+                Get Started
+              </button>
             </nav>
 
             {/* Mobile Menu Button */}
@@ -161,42 +160,39 @@ function LandingPage() {
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <nav className="md:hidden py-4 border-t border-gray-200 animate-fade-in">
+            <nav className="md:hidden py-4 border-t border-gray-300 animate-fade-in bg-gray-50">
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => scrollToSection("home")}
-                  className="text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 transition-colors py-3 px-4 rounded-xl text-left font-medium"
+                  className="text-gray-700 hover:text-blue-600 hover:bg-white transition-colors py-3 px-4 rounded-lg text-left"
                 >
                   Home
                 </button>
                 <button
                   onClick={() => scrollToSection("features")}
-                  className="text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 transition-colors py-3 px-4 rounded-xl text-left font-medium"
+                  className="text-gray-700 hover:text-blue-600 hover:bg-white transition-colors py-3 px-4 rounded-lg text-left"
                 >
                   Features
                 </button>
                 <button
+                  onClick={() => scrollToSection("location")}
+                  className="text-gray-700 hover:text-blue-600 hover:bg-white transition-colors py-3 px-4 rounded-lg text-left"
+                >
+                  Location
+                </button>
+                <button
                   onClick={() => scrollToSection("contact")}
-                  className="text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 transition-colors py-3 px-4 rounded-xl text-left font-medium"
+                  className="text-gray-700 hover:text-blue-600 hover:bg-white transition-colors py-3 px-4 rounded-lg text-left"
                 >
                   Contact
                 </button>
-                <div className="flex flex-col gap-3 mt-4 px-4">
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleLogin();
-                    }}
-                    className="text-gray-700 hover:text-emerald-600 py-3 font-medium transition-all text-center"
-                  >
-                    Login
-                  </button>
+                <div className="mt-4 px-4">
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false);
                       handleGetStarted();
                     }}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-lg font-medium transition-all"
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-medium transition-all"
                   >
                     Get Started
                   </button>
@@ -210,26 +206,27 @@ function LandingPage() {
       {/* Hero Section */}
       <section
         id="home"
-        className="relative min-h-[85vh] flex items-center justify-center overflow-hidden pt-20"
+        className="relative flex items-center justify-center overflow-hidden pt-20"
+        style={{ height: "45.9rem" }}
       >
         {/* Background Image */}
         <div
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1579952363873-27f3bade9f55?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920')`,
+            backgroundImage: `url('/herosection.png')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
           }}
         />
         {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/70 via-slate-800/60 to-slate-900/80 z-10" />
+        <div className="absolute inset-0 bg-slate-900/60 z-10" />
 
-        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-center">
+        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-left">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-emerald-500/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-emerald-400/30">
-            <Trophy className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-medium text-emerald-300">
+          <div className="inline-flex items-center gap-2 bg-blue-500/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-blue-400/30">
+            <Trophy className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-medium text-white">
               Premium Futsal Courts
             </span>
           </div>
@@ -237,7 +234,7 @@ function LandingPage() {
           {/* Main Heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5 leading-tight">
             Book Your Perfect{" "}
-            <span className="text-emerald-400">
+            <span className="text-blue-400">
               Futsal Court
             </span>
           </h1>
@@ -252,7 +249,7 @@ function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={handleGetStarted}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-300 shadow-lg hover:shadow-emerald-500/30"
+              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-300 shadow-lg hover:shadow-blue-500/30"
             >
               Book Now
             </button>
@@ -265,8 +262,6 @@ function LandingPage() {
           </div>
         </div>
 
-        {/* Decorative Elements */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-gray-50 to-transparent z-20" />
       </section>
 
       {/* Stats Section */}
@@ -384,22 +379,31 @@ function LandingPage() {
                 futsals.map((futsal, index) => (
                   <div
                     key={futsal._id}
-                    className="bg-white p-5 rounded-2xl border border-gray-200 group cursor-pointer relative overflow-hidden hover:shadow-md hover:border-blue-200 transition-all duration-300"
+                    className="bg-white rounded-2xl border border-gray-200 group cursor-pointer relative overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all duration-300"
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    <div className="flex justify-between items-start mb-3 relative z-10">
-                      <div>
-                        <h3 className="font-bold text-base text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {futsal.name}
-                        </h3>
-                        <div className="flex items-center gap-1 text-gray-500 text-xs mt-1">
-                          <MapPin size={12} className="text-blue-500" />
-                          <span className="truncate max-w-[180px]">
-                            {futsal.location.address}
-                          </span>
+                    {/* Futsal Image */}
+                    <div className="relative h-32 w-full overflow-hidden">
+                      {futsal.images && futsal.images.length > 0 ? (
+                        <img
+                          src={futsal.images[0]}
+                          alt={futsal.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                          <Image size={32} className="text-blue-200" />
                         </div>
-                      </div>
-                      <div className="bg-gray-50 p-1.5 rounded-lg border border-gray-200 group-hover:border-yellow-400/50 transition-colors">
+                      )}
+                      {/* Image count badge */}
+                      {futsal.images && futsal.images.length > 1 && (
+                        <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                          <Image size={12} />
+                          {futsal.images.length}
+                        </div>
+                      )}
+                      {/* Rating badge */}
+                      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg border border-gray-200 shadow-sm">
                         <div className="flex items-center gap-1">
                           <span className="text-xs font-bold text-gray-900">
                             4.5
@@ -412,25 +416,40 @@ function LandingPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-end justify-between mt-4 relative z-10 border-t border-gray-100 pt-4">
-                      <div>
-                        <p className="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-0.5">
-                          Starting from
-                        </p>
-                        <p className="font-bold text-lg text-gray-900">
-                          <span className="text-blue-600">Rs.</span>
-                          {futsal.pricePerHour}
-                          <span className="text-sm text-gray-500 font-medium">
-                            /hr
+                    {/* Content */}
+                    <div className="p-4">
+                      <div className="mb-3">
+                        <h3 className="font-bold text-base text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {futsal.name}
+                        </h3>
+                        <div className="flex items-center gap-1 text-gray-500 text-xs mt-1">
+                          <MapPin size={12} className="text-blue-500" />
+                          <span className="truncate max-w-[180px]">
+                            {futsal.location.address}
                           </span>
-                        </p>
+                        </div>
                       </div>
-                      <Link
-                        to={`/futsal/${futsal._id}`}
-                        className="bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white p-2.5 rounded-xl transition-all duration-300 border border-blue-200 hover:border-blue-600"
-                      >
-                        <ChevronRight size={18} />
-                      </Link>
+
+                      <div className="flex items-end justify-between pt-3 border-t border-gray-100">
+                        <div>
+                          <p className="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-0.5">
+                            Starting from
+                          </p>
+                          <p className="font-bold text-lg text-gray-900">
+                            <span className="text-blue-600">Rs.</span>
+                            {futsal.pricePerHour}
+                            <span className="text-sm text-gray-500 font-medium">
+                              /hr
+                            </span>
+                          </p>
+                        </div>
+                        <Link
+                          to={`/futsal/${futsal._id}`}
+                          className="bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white p-2.5 rounded-xl transition-all duration-300 border border-blue-200 hover:border-blue-600"
+                        >
+                          <ChevronRight size={18} />
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -631,7 +650,7 @@ function LandingPage() {
             {/* Brand */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="bg-emerald-500 p-2 rounded-lg">
+                <div className="bg-blue-500 p-2 rounded-lg">
                   <Calendar className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-white text-lg font-semibold">

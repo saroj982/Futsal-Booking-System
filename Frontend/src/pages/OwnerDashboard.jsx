@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import LocationMarker from "../components/map/LocationMarker";
-import { Plus, Edit, MapPin, DollarSign, X } from "lucide-react";
+import { Plus, Edit, MapPin, DollarSign, X, Image, Upload, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { uploadMultipleToCloudinary } from "../utils/cloudinary";
 
 function OwnerDashboard() {
   const [futsals, setFutsals] = useState([]);
@@ -20,6 +21,10 @@ function OwnerDashboard() {
   const [position, setPosition] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [imageManageId, setImageManageId] = useState(null);
+  const fileInputRef = useRef(null);
 
   const days = [
     "Sunday",
@@ -103,6 +108,51 @@ function OwnerDashboard() {
     setPosition(null);
     setEditingId(null);
     setShowForm(false);
+  };
+
+  // Image upload handler - uploads to Cloudinary then saves URLs to backend
+  const handleImageUpload = async (futsalId, files) => {
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // Upload to Cloudinary
+      const imageUrls = await uploadMultipleToCloudinary(
+        Array.from(files),
+        (progress) => setUploadProgress(progress)
+      );
+
+      // Save Cloudinary URLs to backend
+      await axios.post(`/api/futsals/${futsalId}/images`, { imageUrls });
+      
+      toast.success("Images uploaded successfully!");
+      fetchMyFutsals();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || "Failed to upload images");
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // Image delete handler
+  const handleImageDelete = async (futsalId, imageUrl) => {
+    if (!window.confirm("Delete this image?")) return;
+
+    try {
+      await axios.delete(`/api/futsals/${futsalId}/images`, {
+        data: { imageUrl },
+      });
+      toast.success("Image deleted!");
+      fetchMyFutsals();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete image");
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -383,6 +433,98 @@ function OwnerDashboard() {
         </div>
       )}
 
+      {/* Image Management Modal */}
+      {imageManageId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Image size={24} className="text-cyan-500" />
+                Manage Images
+              </h3>
+              <button
+                onClick={() => setImageManageId(null)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Current Images */}
+            {(() => {
+              const currentFutsal = futsals.find((f) => f._id === imageManageId);
+              const images = currentFutsal?.images || [];
+              return (
+                <>
+                  {images.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                      {images.map((img, idx) => (
+                        <div key={idx} className="relative group aspect-video rounded-xl overflow-hidden border border-slate-200">
+                          <img
+                            src={img}
+                            alt={`Futsal ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            onClick={() => handleImageDelete(imageManageId, img)}
+                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 mb-6">
+                      <Image size={48} className="mx-auto text-slate-300 mb-2" />
+                      <p className="text-slate-500">No images yet</p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Upload New Images */}
+            <div className="border-t border-slate-200 pt-6">
+              <input
+                type="file"
+                ref={fileInputRef}
+                multiple
+                accept="image/*"
+                onChange={(e) => handleImageUpload(imageManageId, e.target.files)}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full flex flex-col items-center justify-center gap-2 py-4 border-2 border-dashed border-cyan-300 rounded-xl text-cyan-600 hover:bg-cyan-50 hover:border-cyan-400 transition-all disabled:opacity-50"
+              >
+                {uploading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                    <span>Uploading to Cloudinary... {Math.round(uploadProgress)}%</span>
+                    <div className="w-full max-w-xs bg-slate-200 rounded-full h-2 mt-2">
+                      <div
+                        className="bg-cyan-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={20} />
+                    <span>Upload Images (max 5 at once)</span>
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-slate-400 text-center mt-2">
+                Supported: JPG, PNG, WebP, GIF (max 10MB each)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* List of Venues */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {futsals.length === 0 && !showForm && (
@@ -400,49 +542,85 @@ function OwnerDashboard() {
         {futsals.map((futsal, index) => (
           <div
             key={futsal._id}
-            className="glass-card p-6 flex flex-col items-start gap-4 hover:border-cyan-500/30 group"
+            className="glass-card p-0 flex flex-col items-start hover:border-cyan-500/30 group overflow-hidden"
             style={{ animationDelay: `${index * 100}ms` }}
           >
-            <div className="flex justify-between items-start w-full">
-              <div>
-                <h3 className="text-xl font-display font-bold text-slate-900 group-hover:text-cyan-400 transition-colors">
-                  {futsal.name}
-                </h3>
-                <div className="flex items-center gap-1 text-slate-500 text-xs mt-1">
-                  <MapPin size={12} className="text-cyan-500" />
-                  <span className="truncate max-w-[200px]">
-                    {futsal.location.address}
-                  </span>
+            {/* Image Section */}
+            <div className="relative w-full h-40 bg-slate-100">
+              {futsal.images && futsal.images.length > 0 ? (
+                <img
+                  src={futsal.images[0]}
+                  alt={futsal.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+                  <Image size={40} className="text-slate-300" />
                 </div>
-              </div>
-              <div className="bg-slate-50 border border-slate-200 p-2 rounded-lg">
-                <span className="text-lg font-bold text-cyan-400">
-                  ${futsal.pricePerHour}
-                </span>
-                <span className="text-xs text-slate-500">/hr</span>
-              </div>
+              )}
+              {/* Image count badge */}
+              <button
+                onClick={() => setImageManageId(futsal._id)}
+                className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-black/80 transition-colors"
+              >
+                <Image size={14} />
+                {futsal.images?.length || 0} photos
+              </button>
             </div>
 
-            <p className="text-sm text-slate-500 line-clamp-2">
-              {futsal.description || "No description provided."}
-            </p>
-
-            <div className="mt-auto pt-4 border-t border-slate-200 w-full flex items-center justify-between">
-              <div className="flex gap-2">
-                <span className="px-2 py-1 bg-slate-100 rounded text-[10px] text-slate-500 uppercase tracking-wide font-bold">
-                  {futsal.openTime}:00 - {futsal.closeTime}:00
-                </span>
-                <span className="px-2 py-1 bg-slate-100 rounded text-[10px] text-slate-500 uppercase tracking-wide font-bold">
-                  {futsal.openDays.length} Days
-                </span>
+            {/* Content */}
+            <div className="p-5 flex flex-col gap-3 flex-1 w-full">
+              <div className="flex justify-between items-start w-full">
+                <div>
+                  <h3 className="text-lg font-display font-bold text-slate-900 group-hover:text-cyan-400 transition-colors">
+                    {futsal.name}
+                  </h3>
+                  <div className="flex items-center gap-1 text-slate-500 text-xs mt-1">
+                    <MapPin size={12} className="text-cyan-500" />
+                    <span className="truncate max-w-[180px]">
+                      {futsal.location.address}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 p-2 rounded-lg">
+                  <span className="text-lg font-bold text-cyan-400">
+                    Rs.{futsal.pricePerHour}
+                  </span>
+                  <span className="text-xs text-slate-500">/hr</span>
+                </div>
               </div>
 
-              <button
-                onClick={() => handleEdit(futsal)}
-                className="p-2 hover:bg-cyan-500 hover:text-slate-900 rounded-lg transition-colors text-cyan-400"
-              >
-                <Edit size={18} />
-              </button>
+              <p className="text-sm text-slate-500 line-clamp-2">
+                {futsal.description || "No description provided."}
+              </p>
+
+              <div className="mt-auto pt-4 border-t border-slate-200 w-full flex items-center justify-between">
+                <div className="flex gap-2">
+                  <span className="px-2 py-1 bg-slate-100 rounded text-[10px] text-slate-500 uppercase tracking-wide font-bold">
+                    {futsal.openTime}:00 - {futsal.closeTime}:00
+                  </span>
+                  <span className="px-2 py-1 bg-slate-100 rounded text-[10px] text-slate-500 uppercase tracking-wide font-bold">
+                    {futsal.openDays.length} Days
+                  </span>
+                </div>
+
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setImageManageId(futsal._id)}
+                    className="p-2 hover:bg-cyan-100 rounded-lg transition-colors text-cyan-500"
+                    title="Manage Images"
+                  >
+                    <Image size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleEdit(futsal)}
+                    className="p-2 hover:bg-cyan-500 hover:text-white rounded-lg transition-colors text-cyan-400"
+                    title="Edit Venue"
+                  >
+                    <Edit size={18} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ))}

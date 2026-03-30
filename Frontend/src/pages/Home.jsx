@@ -12,6 +12,7 @@ import {
   Star,
   MapPin,
   Filter,
+  Image,
 } from "lucide-react";
 
 function Home() {
@@ -131,25 +132,31 @@ function Home() {
             futsals.map((futsal, index) => (
               <div
                 key={futsal._id}
-                className={`glass-card p-5 group cursor-pointer relative overflow-hidden`}
+                className="glass-card p-0 group cursor-pointer relative overflow-hidden"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                {/* Hover tint */}
-                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-                <div className="flex justify-between items-start mb-3 relative z-10">
-                  <div>
-                    <h3 className="font-display font-bold text-lg text-slate-900 group-hover:text-primary transition-colors">
-                      {futsal.name}
-                    </h3>
-                    <div className="flex items-center gap-1 text-slate-500 text-xs mt-1">
-                      <MapPin size={12} className="text-secondary" />
-                      <span className="truncate max-w-[180px]">
-                        {futsal.location.address}
-                      </span>
+                {/* Futsal Image */}
+                <div className="relative h-36 w-full overflow-hidden">
+                  {futsal.images && futsal.images.length > 0 ? (
+                    <img
+                      src={futsal.images[0]}
+                      alt={futsal.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                      <Image size={36} className="text-slate-300" />
                     </div>
-                  </div>
-                  <div className="bg-white/80 backdrop-blur-sm p-1.5 rounded-lg border border-slate-200 shadow-sm group-hover:border-yellow-500/30 transition-colors">
+                  )}
+                  {/* Image count badge */}
+                  {futsal.images && futsal.images.length > 1 && (
+                    <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                      <Image size={12} />
+                      {futsal.images.length}
+                    </div>
+                  )}
+                  {/* Rating badge */}
+                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg border border-slate-200 shadow-sm">
                     <div className="flex items-center gap-1">
                       <span className="text-xs font-bold text-slate-900">
                         4.5
@@ -162,25 +169,40 @@ function Home() {
                   </div>
                 </div>
 
-                <div className="flex items-end justify-between mt-4 relative z-10 border-t border-slate-200 pt-4">
-                  <div>
-                    <p className="text-slate-500 text-[10px] uppercase tracking-wider font-bold mb-0.5">
-                      Starting from
-                    </p>
-                    <p className="font-display font-bold text-xl text-slate-900">
-                      <span className="text-secondary">$</span>
-                      {futsal.pricePerHour}
-                      <span className="text-sm text-slate-500 font-medium font-sans">
-                        /hr
+                {/* Content */}
+                <div className="p-4">
+                  <div className="mb-3">
+                    <h3 className="font-display font-bold text-lg text-slate-900 group-hover:text-primary transition-colors">
+                      {futsal.name}
+                    </h3>
+                    <div className="flex items-center gap-1 text-slate-500 text-xs mt-1">
+                      <MapPin size={12} className="text-secondary" />
+                      <span className="truncate max-w-[180px]">
+                        {futsal.location.address}
                       </span>
-                    </p>
+                    </div>
                   </div>
-                  <Link
-                    to={`/futsal/${futsal._id}`}
-                    className="bg-white hover:bg-primary text-primary hover:text-slate-900 p-2.5 rounded-xl transition-all duration-300 shadow-lg hover:shadow-primary/25 border border-primary/20 hover:border-primary group-hover:translate-x-1"
-                  >
-                    <ChevronRight size={20} />
-                  </Link>
+
+                  <div className="flex items-end justify-between pt-3 border-t border-slate-200">
+                    <div>
+                      <p className="text-slate-500 text-[10px] uppercase tracking-wider font-bold mb-0.5">
+                        Starting from
+                      </p>
+                      <p className="font-display font-bold text-xl text-slate-900">
+                        <span className="text-secondary">Rs.</span>
+                        {futsal.pricePerHour}
+                        <span className="text-sm text-slate-500 font-medium font-sans">
+                          /hr
+                        </span>
+                      </p>
+                    </div>
+                    <Link
+                      to={`/futsal/${futsal._id}`}
+                      className="bg-white hover:bg-primary text-primary hover:text-slate-900 p-2.5 rounded-xl transition-all duration-300 shadow-lg hover:shadow-primary/25 border border-primary/20 hover:border-primary group-hover:translate-x-1"
+                    >
+                      <ChevronRight size={20} />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))

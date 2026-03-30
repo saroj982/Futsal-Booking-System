@@ -31,7 +31,7 @@ function Navbar() {
           onClick={handleLogoClick}
           className="text-2xl font-bold tracking-tight font-display hover:opacity-80 transition-opacity flex items-center gap-2"
         >
-          <div className="bg-emerald-500 p-2 rounded-xl">
+          <div className="bg-blue-500 p-2 rounded-lg">
             <Calendar className="w-5 h-5 text-white" />
           </div>
           <span className="text-slate-900">Futsal Arena</span>

@@ -52,11 +52,19 @@ const createFutsal = async (req, res) => {
 const getFutsals = async (req, res) => {
   const { keyword, lat, lng, radius } = req.query; // Radius in km
 
+  // If a keyword is provided, prioritize text search across all venues (no geo filter)
+  // so users can always find owner-listed venues by name/address.
   let query = {};
 
-  // If geo-searching
-  if (lat && lng) {
-    const maxDistance = (radius || 10) * 1000; // Default 10km
+  if (keyword) {
+    query = {
+      $or: [
+        { name: { $regex: keyword, $options: "i" } },
+        { "location.address": { $regex: keyword, $options: "i" } },
+      ],
+    };
+  } else if (lat && lng) {
+    const maxDistance = (parseFloat(radius) || 10) * 1000; // Default 10km
     query.location = {
       $near: {
         $geometry: {
@@ -65,14 +73,6 @@ const getFutsals = async (req, res) => {
         },
         $maxDistance: maxDistance,
       },
-    };
-  } else if (keyword) {
-    // Basic text search on name or address (if not using geo)
-    query = {
-      $or: [
-        { name: { $regex: keyword, $options: "i" } },
-        { "location.address": { $regex: keyword, $options: "i" } },
-      ],
     };
   }
 
@@ -170,10 +170,84 @@ const updateFutsal = async (req, res) => {
   }
 };
 
+// @desc    Add Cloudinary image URLs for futsal
+// @route   POST /api/futsals/:id/images
+// @access  Private/Owner
+const uploadImages = async (req, res) => {
+  try {
+    const futsal = await Futsal.findById(req.params.id);
+
+    if (!futsal) {
+      return res.status(404).json({ message: "Futsal not found" });
+    }
+
+    // Check ownership
+    if (futsal.owner.toString() !== req.user._id.toString()) {
+      return res
+        .status(401)
+        .json({ message: "Not authorized to update this futsal" });
+    }
+
+    const { imageUrls } = req.body;
+
+    if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+      return res.status(400).json({ message: "No image URLs provided" });
+    }
+
+    // Add new images to existing ones (max 10 total)
+    const currentImages = futsal.images || [];
+    const newImages = [...currentImages, ...imageUrls].slice(0, 10);
+
+    futsal.images = newImages;
+    await futsal.save();
+
+    res.json({
+      message: "Images added successfully",
+      images: futsal.images,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// @desc    Delete an image from futsal
+// @route   DELETE /api/futsals/:id/images
+// @access  Private/Owner
+const deleteImage = async (req, res) => {
+  try {
+    const { imageUrl } = req.body;
+    const futsal = await Futsal.findById(req.params.id);
+
+    if (!futsal) {
+      return res.status(404).json({ message: "Futsal not found" });
+    }
+
+    // Check ownership
+    if (futsal.owner.toString() !== req.user._id.toString()) {
+      return res
+        .status(401)
+        .json({ message: "Not authorized to update this futsal" });
+    }
+
+    // Remove image from array
+    futsal.images = futsal.images.filter((img) => img !== imageUrl);
+    await futsal.save();
+
+    res.json({
+      message: "Image deleted successfully",
+      images: futsal.images,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createFutsal,
   getFutsals,
   getFutsalById,
   getMyFutsals,
   updateFutsal,
+  uploadImages,
+  deleteImage,
 };

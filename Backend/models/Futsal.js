@@ -17,6 +17,10 @@ const futsalSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  images: {
+    type: [String], // Array of image URLs/paths
+    default: [],
+  },
   location: {
     type: {
       type: String,

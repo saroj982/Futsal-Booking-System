@@ -20,6 +20,8 @@ import {
   CheckCircle,
   AlertCircle,
   ChevronRight,
+  ChevronLeft,
+  Image,
 } from "lucide-react";
 
 function FutsalDetails() {
@@ -34,6 +36,7 @@ function FutsalDetails() {
   const [pendingBooking, setPendingBooking] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const socketRef = useRef();
 
   const today = startOfToday();
@@ -270,9 +273,95 @@ function FutsalDetails() {
     availableHours.push(i);
   }
 
+  const images = futsal.images || [];
+  const hasMultipleImages = images.length > 1;
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-20 animate-fade-in text-slate-900/90">
       <div className="md:col-span-2 space-y-8">
+        {/* Image Gallery Section */}
+        {images.length > 0 && (
+          <div className="glass rounded-[2rem] overflow-hidden border border-slate-200 relative">
+            {/* Main Image */}
+            <div className="relative aspect-video bg-slate-100">
+              <img
+                src={images[currentImageIndex]}
+                alt={`${futsal.name} - Image ${currentImageIndex + 1}`}
+                className="w-full h-full object-cover transition-opacity duration-300"
+              />
+              
+              {/* Navigation Arrows - Only show if multiple images */}
+              {hasMultipleImages && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all"
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                </>
+              )}
+
+              {/* Image Counter */}
+              <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
+                <Image size={16} />
+                {currentImageIndex + 1} / {images.length}
+              </div>
+            </div>
+
+            {/* Thumbnail Strip - Only show if multiple images */}
+            {hasMultipleImages && (
+              <div className="p-4 bg-slate-50 border-t border-slate-200">
+                <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                  {images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentImageIndex(idx)}
+                      className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                        idx === currentImageIndex
+                          ? "border-primary ring-2 ring-primary/30"
+                          : "border-transparent hover:border-slate-300"
+                      }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* No Images Placeholder */}
+        {images.length === 0 && (
+          <div className="glass rounded-[2rem] overflow-hidden border border-slate-200">
+            <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+              <div className="text-center">
+                <Image size={64} className="mx-auto text-slate-300 mb-3" />
+                <p className="text-slate-400 font-medium">No images available</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <FutsalInfo futsal={futsal} />
 
         <div className="glass p-8 md:p-10 rounded-[2.5rem] border border-slate-200 relative overflow-hidden">
