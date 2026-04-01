@@ -81,7 +81,7 @@ const initiateEsewaPayment = async (req, res) => {
     booking.paymentInitiatedAt = now;
     
     // Extend reservation by 5 more minutes when payment is initiated
-    const paymentGracePeriod = 0.1 * 60 * 1000; // 10sec
+    const paymentGracePeriod = 0.5 * 60 * 1000; // 10sec
     const newExpiry = new Date(now.getTime() + paymentGracePeriod);
     if (newExpiry > booking.expiresAt) {
       booking.expiresAt = newExpiry;

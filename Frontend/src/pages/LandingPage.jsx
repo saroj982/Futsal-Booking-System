@@ -19,7 +19,53 @@ import {
   ChevronRight,
   Map as MapIcon,
   Image,
+  Navigation,
 } from "lucide-react";
+
+// Location Permission Modal Component
+function LocationPermissionModal({ onAllow, onDeny }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-scale-in">
+        {/* Header with icon */}
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-8 text-center">
+          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Navigation className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">Enable Location</h2>
+          <p className="text-blue-100 mt-2">Find futsal courts near you</p>
+        </div>
+        
+        {/* Content */}
+        <div className="px-6 py-6">
+          <p className="text-gray-600 text-center mb-6">
+            Allow Futsal Arena to access your location to show nearby futsal courts and help you find the best venues in your area.
+          </p>
+          
+          <div className="space-y-3">
+            <button
+              onClick={onAllow}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              <MapPin className="w-5 h-5" />
+              Allow Location Access
+            </button>
+            <button
+              onClick={onDeny}
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-medium transition-all duration-200"
+            >
+              Maybe Later
+            </button>
+          </div>
+          
+          <p className="text-xs text-gray-400 text-center mt-4">
+            Your location data is only used to find nearby venues and is never stored.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -31,20 +77,93 @@ function LandingPage() {
   const [keyword, setKeyword] = useState("");
   const [radius, setRadius] = useState(10);
   const [loading, setLoading] = useState(true);
+  const [locationPermission, setLocationPermission] = useState("prompt");
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
-  // Get user location
+  // Check if we should show location modal on mount
   useEffect(() => {
+    const checkLocationPermission = async () => {
+      // Check if user already dismissed the modal
+      const dismissed = sessionStorage.getItem("locationModalDismissed");
+      if (dismissed) return;
+
+      // Check if geolocation is supported
+      if (!navigator.geolocation) {
+        console.log("Geolocation is not supported by this browser.");
+        return;
+      }
+
+      // Check current permission status
+      if (navigator.permissions) {
+        try {
+          const permission = await navigator.permissions.query({ name: "geolocation" });
+          setLocationPermission(permission.state);
+          
+          if (permission.state === "prompt") {
+            // Show our custom modal first
+            setShowLocationModal(true);
+          } else if (permission.state === "granted") {
+            // Already granted, get location directly
+            getCurrentLocation();
+          }
+          
+          // Listen for permission changes
+          permission.onchange = () => {
+            setLocationPermission(permission.state);
+            if (permission.state === "granted") {
+              setShowLocationModal(false);
+              getCurrentLocation();
+            }
+          };
+        } catch (err) {
+          // Permission API not supported, show modal anyway
+          setShowLocationModal(true);
+        }
+      } else {
+        // Permission API not available, show modal
+        setShowLocationModal(true);
+      }
+    };
+
+    checkLocationPermission();
+  }, []);
+
+  // Function to get current location
+  const getCurrentLocation = () => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocation({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         });
+        setLocationPermission("granted");
+        setShowLocationModal(false);
       },
-      (err) => console.log(err),
-      { enableHighAccuracy: true }
+      (err) => {
+        console.log("Location error:", err.message);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationPermission("denied");
+        }
+        setShowLocationModal(false);
+      },
+      { 
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
     );
-  }, []);
+  };
+
+  // Handle allow location from modal
+  const handleAllowLocation = () => {
+    getCurrentLocation();
+  };
+
+  // Handle deny location from modal
+  const handleDenyLocation = () => {
+    setShowLocationModal(false);
+    sessionStorage.setItem("locationModalDismissed", "true");
+  };
 
   // Fetch futsals from backend
   useEffect(() => {
@@ -94,6 +213,14 @@ function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Location Permission Modal */}
+      {showLocationModal && (
+        <LocationPermissionModal
+          onAllow={handleAllowLocation}
+          onDeny={handleDenyLocation}
+        />
+      )}
+
       {/* Header/Navigation */}
       <header className="fixed top-0 left-0 right-0 bg-gray-50 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -120,16 +247,16 @@ function LandingPage() {
                 Home
               </button>
               <button
-                onClick={() => scrollToSection("features")}
-                className="text-gray-700 hover:text-blue-600 transition-colors"
-              >
-                Features
-              </button>
-              <button
                 onClick={() => scrollToSection("location")}
                 className="text-gray-700 hover:text-blue-600 transition-colors"
               >
                 Location
+              </button>
+              <button
+                onClick={() => scrollToSection("features")}
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Feature
               </button>
               <button
                 onClick={() => scrollToSection("contact")}
@@ -169,16 +296,16 @@ function LandingPage() {
                   Home
                 </button>
                 <button
-                  onClick={() => scrollToSection("features")}
-                  className="text-gray-700 hover:text-blue-600 hover:bg-white transition-colors py-3 px-4 rounded-lg text-left"
-                >
-                  Features
-                </button>
-                <button
                   onClick={() => scrollToSection("location")}
                   className="text-gray-700 hover:text-blue-600 hover:bg-white transition-colors py-3 px-4 rounded-lg text-left"
                 >
                   Location
+                </button>
+                <button
+                  onClick={() => scrollToSection("features")}
+                  className="text-gray-700 hover:text-blue-600 hover:bg-white transition-colors py-3 px-4 rounded-lg text-left"
+                >
+                  Feature
                 </button>
                 <button
                   onClick={() => scrollToSection("contact")}

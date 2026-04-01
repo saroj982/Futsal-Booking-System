@@ -164,7 +164,7 @@ const BookingItem = ({ booking, onPaymentSuccess }) => {
               </p>
               {booking.refundAmount && (
                 <p className="text-orange-600 mt-1">
-                  Refund amount: <span className="font-bold">NPR {booking.refundAmount}</span>
+                  Refund amount: <span className="font-bold">Rs. {booking.refundAmount}</span>
                 </p>
               )}
             </div>
@@ -177,7 +177,7 @@ const BookingItem = ({ booking, onPaymentSuccess }) => {
               Total
             </span>
             <span className="text-2xl font-display font-bold text-slate-900">
-              NPR {booking.totalPrice}
+              Rs. {booking.totalPrice}
             </span>
           </div>
 

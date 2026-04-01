@@ -484,7 +484,7 @@ function FutsalDetails() {
               <div className="flex justify-between items-center mb-6 pt-4 border-t border-slate-200">
                 <span className="text-slate-600 font-medium">Total Amount</span>
                 <span className="text-2xl font-display font-bold text-slate-900">
-                  NPR.{pendingBooking.totalPrice}
+                  Rs.{pendingBooking.totalPrice}
                 </span>
               </div>
 
@@ -537,7 +537,7 @@ function FutsalDetails() {
                   Total Amount
                 </p>
                 <p className="text-2xl font-display font-bold text-slate-900 leading-none">
-                  <span className="text-secondary">NPR.</span>
+                  <span className="text-secondary">Rs.</span>
                   {totalPrice}
                 </p>
               </div>

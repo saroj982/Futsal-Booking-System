@@ -249,7 +249,7 @@ function Home() {
                       {futsal.name}
                     </h3>
                     <p className="text-xs text-slate-600 mb-2">
-                      ${futsal.pricePerHour}/hr
+                      Rs.{futsal.pricePerHour}/hr
                     </p>
                     <Link
                       to={`/futsal/${futsal._id}`}

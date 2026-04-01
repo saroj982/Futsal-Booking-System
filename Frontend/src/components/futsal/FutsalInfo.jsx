@@ -28,7 +28,7 @@ const FutsalInfo = ({ futsal }) => {
               Price
             </span>
             <div className="flex items-center justify-center gap-0.5 text-slate-900">
-              <span className="text-lg font-bold text-secondary">NPR.</span>
+              <span className="text-lg font-bold text-secondary">Rs.</span>
               <span className="text-3xl font-display font-bold">
                 {futsal.pricePerHour}
               </span>

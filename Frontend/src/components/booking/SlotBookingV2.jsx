@@ -167,7 +167,7 @@ export function SlotBookingV2({ futsalId, date, futsal }) {
               ) : (
                 <CreditCard size={20} />
               )}
-              Pay with eSewa - NPR {totalPrice}
+              Pay with eSewa - Rs. {totalPrice}
             </button>
             <button
               onClick={handleCancel}
@@ -231,7 +231,7 @@ export function SlotBookingV2({ futsalId, date, futsal }) {
             <div className="text-right">
               <p className="text-sm text-slate-500">Total</p>
               <p className="text-xl font-bold text-slate-900">
-                NPR {totalPrice}
+                Rs. {totalPrice}
               </p>
             </div>
           </div>

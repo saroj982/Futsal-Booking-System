@@ -99,7 +99,7 @@ function PaymentSuccess() {
             {refundAmount > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
                 <p className="text-yellow-800 font-medium">
-                  Refund Amount: NPR {refundAmount}
+                  Refund Amount: Rs. {refundAmount}
                 </p>
                 <p className="text-yellow-700 text-sm mt-1">
                   Your refund will be processed within 3-5 business days.
