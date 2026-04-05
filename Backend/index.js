@@ -12,6 +12,7 @@ const futsalRoutes = require("./routes/futsal");
 const bookingRoutes = require("./routes/booking");
 const paymentRoutes = require("./routes/payment");
 const bookingV2Routes = require("./routes/bookingV2");
+const adminRoutes = require("./routes/admin");
 const { checkExpiredBookings } = require("./controllers/bookingController");
 const { expireReservations } = require("./services/bookingService");
 
@@ -51,6 +52,9 @@ app.use("/api/payments", paymentRoutes);
 
 // New race-condition-safe routes (v2)
 app.use("/api/v2/bookings", bookingV2Routes);
+
+// Admin routes
+app.use("/api/admin", adminRoutes);
 
 const PORT = 5000;
 

@@ -47,7 +47,16 @@ const authUser = async (req, res) => {
   try {
     const user = await User.findOne({ email });
 
-    if (user && (await user.matchPassword(password))) {
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Check if user is blocked
+    if (user.isBlocked) {
+      return res.status(403).json({ message: "Your account has been blocked. Please contact support." });
+    }
+
+    if (await user.matchPassword(password)) {
       res.json({
         _id: user._id,
         name: user.name,

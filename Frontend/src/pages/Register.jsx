@@ -9,6 +9,7 @@ import {
   Briefcase,
   ArrowRight,
   Check,
+  AlertCircle,
 } from "lucide-react";
 
 function Register() {
@@ -16,11 +17,77 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
+  const [errors, setErrors] = useState({});
   const { register } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // Validate full name - first 3 chars must be letters, no numbers only
+  const validateName = (value) => {
+    if (!value.trim()) {
+      return "Full name is required";
+    }
+    if (value.trim().length < 3) {
+      return "Full name must be at least 3 characters";
+    }
+    if (!/^[a-zA-Z]{3}/.test(value.trim())) {
+      return "First three characters must be letters";
+    }
+    if (/^[0-9\s]+$/.test(value)) {
+      return "Full name cannot be only numbers";
+    }
+    return null;
+  };
+
+  // Validate password - min 8 chars, uppercase, lowercase, number, special char
+  const validatePassword = (value) => {
+    const requirements = [];
+    if (value.length < 8) {
+      requirements.push("at least 8 characters");
+    }
+    if (!/[A-Z]/.test(value)) {
+      requirements.push("one uppercase letter");
+    }
+    if (!/[a-z]/.test(value)) {
+      requirements.push("one lowercase letter");
+    }
+    if (!/[0-9]/.test(value)) {
+      requirements.push("one number");
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value)) {
+      requirements.push("one special character");
+    }
+    if (requirements.length > 0) {
+      return `Password must contain ${requirements.join(", ")}`;
+    }
+    return null;
+  };
+
+  const handleNameChange = (e) => {
+    const value = e.target.value;
+    setName(value);
+    const error = validateName(value);
+    setErrors((prev) => ({ ...prev, name: error }));
+  };
+
+  const handlePasswordChange = (e) => {
+    const value = e.target.value;
+    setPassword(value);
+    const error = validatePassword(value);
+    setErrors((prev) => ({ ...prev, password: error }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate all fields
+    const nameError = validateName(name);
+    const passwordError = validatePassword(password);
+    
+    if (nameError || passwordError) {
+      setErrors({ name: nameError, password: passwordError });
+      return;
+    }
+
     try {
       await register(name, email, password, role);
       navigate(role === "owner" ? "/owner" : "/");
@@ -53,18 +120,28 @@ function Register() {
               Full Name
             </label>
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within/input:text-secondary transition-colors">
+              <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.name ? "text-red-500" : "text-slate-500 group-focus-within/input:text-secondary"}`}>
                 <User size={20} />
               </div>
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-1000 border border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-900 focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all placeholder:text-slate-600 shadow-inner"
+                onChange={handleNameChange}
+                className={`w-full bg-slate-1000 border rounded-2xl py-4 pl-12 pr-4 text-slate-900 focus:ring-2 outline-none transition-all placeholder:text-slate-600 shadow-inner ${
+                  errors.name 
+                    ? "border-red-500 focus:ring-red-500/50 focus:border-red-500" 
+                    : "border-slate-700 focus:ring-secondary/50 focus:border-secondary"
+                }`}
                 placeholder="John Doe"
                 required
               />
             </div>
+            {errors.name && (
+              <p className="mt-2 text-sm text-red-500 flex items-center gap-1 ml-1">
+                <AlertCircle size={14} />
+                {errors.name}
+              </p>
+            )}
           </div>
 
           <div className="relative group/input">
@@ -91,18 +168,34 @@ function Register() {
               Password
             </label>
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within/input:text-secondary transition-colors">
+              <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.password ? "text-red-500" : "text-slate-500 group-focus-within/input:text-secondary"}`}>
                 <Lock size={20} />
               </div>
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-1000 border border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-900 focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-all placeholder:text-slate-600 shadow-inner"
+                onChange={handlePasswordChange}
+                className={`w-full bg-slate-1000 border rounded-2xl py-4 pl-12 pr-4 text-slate-900 focus:ring-2 outline-none transition-all placeholder:text-slate-600 shadow-inner ${
+                  errors.password 
+                    ? "border-red-500 focus:ring-red-500/50 focus:border-red-500" 
+                    : "border-slate-700 focus:ring-secondary/50 focus:border-secondary"
+                }`}
                 placeholder="••••••••"
                 required
               />
             </div>
+            {errors.password && (
+              <p className="mt-2 text-sm text-red-500 flex items-center gap-1 ml-1">
+                <AlertCircle size={14} />
+                {errors.password}
+              </p>
+            )}
+            {!errors.password && password && (
+              <p className="mt-2 text-sm text-green-600 flex items-center gap-1 ml-1">
+                <Check size={14} />
+                Password meets all requirements
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

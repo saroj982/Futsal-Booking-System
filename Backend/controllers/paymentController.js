@@ -12,11 +12,12 @@ const generateSignature = (message) => {
   return hash;
 };
 
-// Generate unique transaction UUID
+// Generate unique transaction UUID (alphanumeric and hyphen only as per eSewa docs)
 const generateTransactionUuid = (bookingId) => {
   const timestamp = Date.now();
-  const random = crypto.randomBytes(4).toString("hex");
-  return `${bookingId}-${timestamp}-${random}`;
+  // Use only last 8 chars of bookingId to keep it short and simple
+  const shortId = bookingId.toString().slice(-8);
+  return `${shortId}-${timestamp}`;
 };
 
 // Generate idempotency key

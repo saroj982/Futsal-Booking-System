@@ -13,6 +13,12 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       req.user = await User.findById(decoded.id).select("-password");
+      
+      // Check if user is blocked
+      if (req.user && req.user.isBlocked) {
+        return res.status(403).json({ message: "Your account has been blocked. Please contact support." });
+      }
+      
       next();
     } catch (error) {
       console.error(error);
@@ -33,4 +39,12 @@ const owner = (req, res, next) => {
   }
 };
 
-module.exports = { protect, owner };
+const admin = (req, res, next) => {
+  if (req.user && req.user.role === "admin") {
+    next();
+  } else {
+    res.status(401).json({ message: "Not authorized as an admin" });
+  }
+};
+
+module.exports = { protect, owner, admin };

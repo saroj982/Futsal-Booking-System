@@ -83,29 +83,26 @@ function LandingPage() {
   // Check if we should show location modal on mount
   useEffect(() => {
     const checkLocationPermission = async () => {
-      // Check if user already dismissed the modal
-      const dismissed = sessionStorage.getItem("locationModalDismissed");
-      if (dismissed) return;
-
       // Check if geolocation is supported
       if (!navigator.geolocation) {
         console.log("Geolocation is not supported by this browser.");
         return;
       }
 
-      // Check current permission status
+      // Always try to get fresh location on every launch
       if (navigator.permissions) {
         try {
           const permission = await navigator.permissions.query({ name: "geolocation" });
           setLocationPermission(permission.state);
           
-          if (permission.state === "prompt") {
-            // Show our custom modal first
-            setShowLocationModal(true);
-          } else if (permission.state === "granted") {
-            // Already granted, get location directly
+          if (permission.state === "granted") {
+            // Already granted, get fresh location directly
             getCurrentLocation();
+          } else if (permission.state === "prompt") {
+            // Show our custom modal
+            setShowLocationModal(true);
           }
+          // If denied, use default location (already set in state)
           
           // Listen for permission changes
           permission.onchange = () => {
@@ -116,12 +113,12 @@ function LandingPage() {
             }
           };
         } catch (err) {
-          // Permission API not supported, show modal anyway
-          setShowLocationModal(true);
+          // Permission API not supported, try getting location directly
+          getCurrentLocation();
         }
       } else {
-        // Permission API not available, show modal
-        setShowLocationModal(true);
+        // Permission API not available, try getting location directly
+        getCurrentLocation();
       }
     };
 
@@ -162,7 +159,6 @@ function LandingPage() {
   // Handle deny location from modal
   const handleDenyLocation = () => {
     setShowLocationModal(false);
-    sessionStorage.setItem("locationModalDismissed", "true");
   };
 
   // Fetch futsals from backend
@@ -239,7 +235,7 @@ function LandingPage() {
             </button>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-12">
+            <nav className="hidden md:flex items-center gap-10">
               <button
                 onClick={() => scrollToSection("home")}
                 className="text-gray-700 hover:text-blue-600 transition-colors"
@@ -265,8 +261,14 @@ function LandingPage() {
                 Contact
               </button>
               <button
+                onClick={() => navigate("/login")}
+                className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 px-6 py-2 rounded-lg font-medium transition-all duration-200"
+              >
+                Login
+              </button>
+              <button
                 onClick={handleGetStarted}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-200 ml-4"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-200"
               >
                 Get Started
               </button>
@@ -313,7 +315,16 @@ function LandingPage() {
                 >
                   Contact
                 </button>
-                <div className="mt-4 px-4">
+                <div className="mt-4 px-4 flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate("/login");
+                    }}
+                    className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 py-3 rounded-lg font-medium transition-all"
+                  >
+                    Login
+                  </button>
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false);

@@ -12,6 +12,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
 import OwnerDashboard from "./pages/OwnerDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import FutsalDetails from "./pages/FutsalDetails";
 import MyBookings from "./pages/MyBookings";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -23,10 +24,11 @@ function AppContent() {
   const { user } = useContext(AuthContext);
   const location = useLocation();
 
-  // Hide navbar on landing page and payment pages
+  // Hide navbar on landing page, payment pages, and admin dashboard
   const isLandingPage = location.pathname === "/";
   const isPaymentPage = location.pathname.startsWith("/payment");
-  const showNavbar = user || (!isLandingPage && !isPaymentPage);
+  const isAdminPage = location.pathname.startsWith("/admin");
+  const showNavbar = user && !isLandingPage && !isPaymentPage && !isAdminPage;
 
   return (
     <>
@@ -48,7 +50,9 @@ function AppContent() {
             <Route
               path="/"
               element={
-                user?.role === "owner" ? (
+                user?.role === "admin" ? (
+                  <Navigate to="/admin" />
+                ) : user?.role === "owner" ? (
                   <Navigate to="/owner" />
                 ) : user?.role === "user" ? (
                   <Navigate to="/home" />
@@ -63,17 +67,27 @@ function AppContent() {
             />
             <Route
               path="/login"
-              element={!user ? <Login /> : <Navigate to="/home" />}
+              element={!user ? <Login /> : <Navigate to="/" />}
             />
             <Route
               path="/register"
-              element={!user ? <Register /> : <Navigate to="/home" />}
+              element={!user ? <Register /> : <Navigate to="/" />}
             />
             <Route
               path="/owner"
               element={
                 user?.role === "owner" ? (
                   <OwnerDashboard />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                user?.role === "admin" ? (
+                  <AdminDashboard />
                 ) : (
                   <Navigate to="/" />
                 )

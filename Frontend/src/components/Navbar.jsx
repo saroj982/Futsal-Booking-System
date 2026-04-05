@@ -90,7 +90,10 @@ function Navbar() {
                   </div>
                 </div>
                 <button
-                  onClick={logout}
+                  onClick={() => {
+                    logout();
+                    navigate("/");
+                  }}
                   className="p-2.5 text-slate-500 hover:text-accent transition-colors rounded-xl hover:bg-slate-100 border border-transparent hover:border-slate-200"
                   title="Logout"
                 >
