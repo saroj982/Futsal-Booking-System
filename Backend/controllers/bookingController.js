@@ -209,7 +209,7 @@ const getBookedSlots = async (req, res) => {
 };
 
 // @desc    Get user bookings
-// @route   GET /api/bookings/my
+// @route   GET /api/bookings/mys
 // @access  Private
 const getMyBookings = async (req, res) => {
   try {
