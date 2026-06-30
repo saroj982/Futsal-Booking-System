@@ -15,7 +15,9 @@ const createFutsal = async (req, res) => {
     openTime,
     closeTime,
     openDays,
+    images
   } = req.body;
+  
 
   if (openTime >= closeTime) {
     return res
@@ -36,6 +38,7 @@ const createFutsal = async (req, res) => {
     openTime,
     closeTime,
     openDays,
+    images
   });
 
   try {
