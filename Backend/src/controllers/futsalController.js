@@ -15,7 +15,9 @@ const createFutsal = async (req, res) => {
     openTime,
     closeTime,
     openDays,
-    images
+    images,
+    facilities,
+    rules,
   } = req.body;
   
 
@@ -38,7 +40,14 @@ const createFutsal = async (req, res) => {
     openTime,
     closeTime,
     openDays,
-    images
+    images,
+    facilities: {
+      changingRooms: !!facilities?.changingRooms,
+      freeWater: !!facilities?.freeWater,
+      nightLight: !!facilities?.nightLight,
+      parking: !!facilities?.parking,
+    },
+    rules: Array.isArray(rules) && rules.length > 0 ? rules : undefined,
   });
 
   try {
@@ -132,6 +141,8 @@ const updateFutsal = async (req, res) => {
     openTime,
     closeTime,
     openDays,
+    facilities,
+    rules,
   } = req.body;
 
   try {
@@ -154,6 +165,17 @@ const updateFutsal = async (req, res) => {
     futsal.openTime = openTime || futsal.openTime;
     futsal.closeTime = closeTime || futsal.closeTime;
     futsal.openDays = openDays || futsal.openDays;
+    if (facilities) {
+      futsal.facilities = {
+        changingRooms: !!facilities.changingRooms,
+        freeWater: !!facilities.freeWater,
+        nightLight: !!facilities.nightLight,
+        parking: !!facilities.parking,
+      };
+    }
+    if (Array.isArray(rules) && rules.length > 0) {
+      futsal.rules = rules;
+    }
 
     if (lat && lng) {
       futsal.location = {

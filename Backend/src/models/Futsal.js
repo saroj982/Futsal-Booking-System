@@ -45,6 +45,33 @@ const futsalSchema = new mongoose.Schema({
     type: [String], // Array of day names: ['Sunday', 'Monday', ...]
     required: true,
   },
+  facilities: {
+    changingRooms: {
+      type: Boolean,
+      default: false,
+    },
+    freeWater: {
+      type: Boolean,
+      default: false,
+    },
+    nightLight: {
+      type: Boolean,
+      default: false,
+    },
+    parking: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  rules: {
+    type: [String],
+    default: [
+      "Indoor sports shoes only",
+      "No food or drinks on the field",
+      "Arrive 15 minutes before your booking",
+      "Maximum 10 players per field",
+    ],
+  },
   isActive: {
     type: Boolean,
     default: true,
