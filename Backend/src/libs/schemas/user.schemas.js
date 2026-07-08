@@ -1,18 +1,22 @@
-import { ROLE_ADMIN, ROLE_CUSTOMER, ROLE_MERCHANT, ROLE_SUPER_ADMIN } from "../../constants/roles.js";
+import { z } from "zod";
+import { ROLE_USER, ROLE_OWNER, ROLE_ADMIN } from "../../constants/roles.js";
 
-//this is registerschema
-export const userSchema = z.object({
-    name: z.string().check(minLength(3), maxLength(30)),
-    email: z.string().check(minLength(3)).regex(emailRegex, { error: "Invalid email address" }),
-    phone: z.string().check(minLength(6), maxLength(15)),
-    password: z.string().check(minLength(6)).regex(passwordRegex, { error: "password must contain uppercase,lowercase,number and special charactes." }),
-    isActive: z.boolean().default(true),
-    roles: z.array(z.enum([ROLE_CUSTOMER,ROLE_ADMIN,ROLE_MERCHANT,ROLE_SUPER_ADMIN])).default(ROLE_CUSTOMER),
-    address: z.object({
-        city: z.string(),
-        provience: z.string().optional(),
-        street: z.string().optional(),
-        country: z.string().default("Nepal"),
+const roleValues = [ROLE_USER, ROLE_OWNER, ROLE_ADMIN];
 
-    }),
+export const registerUserSchema = z.object({
+  name: z.string().trim().min(3, "Name must be at least 3 characters long.").max(30, "Name must be at most 30 characters long."),
+  email: z.string().trim().min(1, "Email is required.").email("Invalid email address."),
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters long.")
+    .max(100, "Password is too long."),
+  role: z.enum(roleValues).optional().default(ROLE_USER),
 });
+
+
+export const userSchema = registerUserSchema;
+
+export default {
+  registerUserSchema,
+  userSchema,
+};

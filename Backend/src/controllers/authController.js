@@ -2,9 +2,24 @@ import User from "../models/User.js";
 import { generateToken } from "../utils/jwt.js";
 import authService from "../services/auth.service.js";
 import { ROLE_USER } from "../constants/roles.js";
+import { registerUserSchema } from "../libs/schemas/user.schemas.js";
+import {
+  loginUserSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "../libs/schemas/auth.schemas.js";
+
+const getValidationMessage = (result) =>
+  result.error.issues[0]?.message || "Invalid request data";
 
 const registerUser = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const parsed = registerUserSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({ message: getValidationMessage(parsed) });
+  }
+
+  const { name, email, password, role } = parsed.data;
 
   try {
     const userExists = await User.findOne({ email });
@@ -37,7 +52,13 @@ const registerUser = async (req, res) => {
 };
 
 const authUser = async (req, res) => {
-  const { email, password } = req.body;
+  const parsed = loginUserSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({ message: getValidationMessage(parsed) });
+  }
+
+  const { email, password } = parsed.data;
 
   try {
     const user = await User.findOne({ email });
@@ -70,7 +91,13 @@ const authUser = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   try {
-    const data = await authService.forgotPassword(req.body?.email);
+    const parsed = forgotPasswordSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({ message: getValidationMessage(parsed) });
+    }
+
+    const data = await authService.forgotPassword(parsed.data.email);
     res.json(data);
   } catch (error) {
     res.status(error.status || 400).send(error.message);
@@ -79,7 +106,13 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    const data = await authService.resetPassword(req.body);
+    const parsed = resetPasswordSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({ message: getValidationMessage(parsed) });
+    }
+
+    const data = await authService.resetPassword(parsed.data);
     res.json(data);
   } catch (error) {
     res.status(error.status || 400).send(error.message);

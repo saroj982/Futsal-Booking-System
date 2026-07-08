@@ -1,10 +1,20 @@
 import Futsal from "../models/Futsal.js";
 import Booking from "../models/Booking.js";
+import { createFutsalSchema, updateFutsalSchema } from "../libs/schemas/futsal.schemas.js";
+
+const getValidationMessage = (result) =>
+  result.error.issues[0]?.message || "Invalid request data";
 
 // @desc    Register a new futsal
 // @route   POST /api/futsals
 // @access  Private/Owner
 const createFutsal = async (req, res) => {
+  const parsed = createFutsalSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({ message: getValidationMessage(parsed) });
+  }
+
   const {
     name,
     description,
@@ -18,14 +28,7 @@ const createFutsal = async (req, res) => {
     images,
     facilities,
     rules,
-  } = req.body;
-  
-
-  if (openTime >= closeTime) {
-    return res
-      .status(400)
-      .json({ message: "Closing time must be after opening time" });
-  }
+  } = parsed.data;
 
   const futsal = new Futsal({
     owner: req.user._id,
@@ -47,7 +50,7 @@ const createFutsal = async (req, res) => {
       nightLight: !!facilities?.nightLight,
       parking: !!facilities?.parking,
     },
-    rules: Array.isArray(rules) && rules.length > 0 ? rules : undefined,
+    rules,
   });
 
   try {
@@ -131,6 +134,12 @@ const getMyFutsals = async (req, res) => {
 // @route   PUT /api/futsals/:id
 // @access  Private/Owner
 const updateFutsal = async (req, res) => {
+  const parsed = updateFutsalSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({ message: getValidationMessage(parsed) });
+  }
+
   const {
     name,
     description,
@@ -143,7 +152,7 @@ const updateFutsal = async (req, res) => {
     openDays,
     facilities,
     rules,
-  } = req.body;
+  } = parsed.data;
 
   try {
     const futsal = await Futsal.findById(req.params.id);
@@ -159,12 +168,12 @@ const updateFutsal = async (req, res) => {
         .json({ message: "Not authorized to update this futsal" });
     }
 
-    futsal.name = name || futsal.name;
-    futsal.description = description || futsal.description;
-    futsal.pricePerHour = pricePerHour || futsal.pricePerHour;
-    futsal.openTime = openTime || futsal.openTime;
-    futsal.closeTime = closeTime || futsal.closeTime;
-    futsal.openDays = openDays || futsal.openDays;
+    futsal.name = name ?? futsal.name;
+    futsal.description = description ?? futsal.description;
+    futsal.pricePerHour = pricePerHour ?? futsal.pricePerHour;
+    futsal.openTime = openTime ?? futsal.openTime;
+    futsal.closeTime = closeTime ?? futsal.closeTime;
+    futsal.openDays = openDays ?? futsal.openDays;
     if (facilities) {
       futsal.facilities = {
         changingRooms: !!facilities.changingRooms,
@@ -173,11 +182,11 @@ const updateFutsal = async (req, res) => {
         parking: !!facilities.parking,
       };
     }
-    if (Array.isArray(rules) && rules.length > 0) {
+    if (Array.isArray(rules)) {
       futsal.rules = rules;
     }
 
-    if (lat && lng) {
+    if (lat !== undefined && lng !== undefined) {
       futsal.location = {
         type: "Point",
         coordinates: [lng, lat],
