@@ -4,6 +4,7 @@ import {
   getFutsals,
   getFutsalById,
   getMyFutsals,
+  getRoute,
   updateFutsal,
   uploadImages,
   deleteImage,
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.route("/").get(getFutsals).post(protect, owner, createFutsal);
 router.route("/my").get(protect, owner, getMyFutsals);
+router.get("/route", getRoute);
 router.route("/:id").get(getFutsalById).put(protect, owner, updateFutsal);
 router.post("/:id/images", protect, owner, uploadImages);
 router.delete("/:id/images", protect, owner, deleteImage);

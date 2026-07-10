@@ -1,6 +1,8 @@
+import axios from "axios";
 import Futsal from "../models/Futsal.js";
 import Booking from "../models/Booking.js";
 import { createFutsalSchema, updateFutsalSchema } from "../libs/schemas/futsal.schemas.js";
+import { haversineDistanceKm } from "../utils/location.js";
 
 const getValidationMessage = (result) =>
   result.error.issues[0]?.message || "Invalid request data";
@@ -93,9 +95,66 @@ const getFutsals = async (req, res) => {
 
   try {
     const futsals = await Futsal.find(query);
+
+    if (lat && lng) {
+      const userLat = parseFloat(lat);
+      const userLng = parseFloat(lng);
+
+      const futsalsWithDistance = futsals.map((futsal) => {
+        const [venueLng, venueLat] = futsal.location?.coordinates || [];
+        const distance = haversineDistanceKm(
+          userLat,
+          userLng,
+          venueLat,
+          venueLng,
+        );
+
+        return {
+          ...futsal.toObject(),
+          distanceKm: distance,
+        };
+      });
+
+      return res.json(futsalsWithDistance);
+    }
+
     res.json(futsals);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// @desc    Get driving route between two coordinates
+// @route   GET /api/futsals/route
+// @access  Public
+const getRoute = async (req, res) => {
+  const { startLat, startLng, endLat, endLng } = req.query;
+
+  if (!startLat || !startLng || !endLat || !endLng) {
+    return res.status(400).json({ message: "Missing route coordinates" });
+  }
+
+  try {
+    const response = await axios.get(
+      `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`,
+    );
+
+    const route = response?.data?.routes?.[0];
+
+    if (!route?.geometry?.coordinates?.length) {
+      return res.status(404).json({ message: "No route found" });
+    }
+
+    const coordinates = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+
+    res.json({
+      coordinates,
+      distanceKm: Number((route.distance / 1000).toFixed(1)),
+      durationMin: Math.max(1, Math.round(route.duration / 60)),
+    });
+  } catch (error) {
+    console.error("Route generation failed", error.message);
+    res.status(502).json({ message: "Unable to generate route" });
   }
 };
 
@@ -281,6 +340,7 @@ export {
   getFutsals,
   getFutsalById,
   getMyFutsals,
+  getRoute,
   updateFutsal,
   uploadImages,
   deleteImage,
