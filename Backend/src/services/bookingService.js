@@ -325,7 +325,7 @@ async function confirmPayment(transactionUuid, webhookPayload, isSuccess, gatewa
       }
 
       if (!confirmResult.duplicate && confirmResult.reservation) {
-        await sendBookingConfirmationEmails({
+        sendBookingConfirmationEmails({
           userId: confirmResult.reservation.user,
           futsalId: confirmResult.reservation.futsal,
           date: confirmResult.reservation.date,
