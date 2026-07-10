@@ -224,7 +224,7 @@ const verifyEsewaPayment = async (req, res) => {
           });
         }
 
-        sendBookingConfirmationEmails({
+        await sendBookingConfirmationEmails({
           userId: result.booking.user,
           futsalId: result.booking.futsal,
           date: result.booking.date,
@@ -771,7 +771,7 @@ const verifyEsewaPaymentV2 = async (req, res) => {
     // 10. Handle confirmation result
     if (confirmResult.success) {
       if (!confirmResult.duplicate && confirmResult.reservation) {
-        sendBookingConfirmationEmails({
+        await sendBookingConfirmationEmails({
           userId: confirmResult.reservation.user,
           futsalId: confirmResult.reservation.futsal,
           date: confirmResult.reservation.date,
