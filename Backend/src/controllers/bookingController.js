@@ -208,6 +208,47 @@ const getBookedSlots = async (req, res) => {
   }
 };
 
+// @desc    Get owner booking dashboard overview
+// @route   GET /api/bookings/owner/dashboard
+// @access  Private (Owner)
+const getOwnerDashboardBookings = async (req, res) => {
+  try {
+    const futsals = await Futsal.find({ owner: req.user._id }).select("_id name");
+    const futsalIds = futsals.map((futsal) => futsal._id);
+
+    const bookings = await Booking.find({ futsal: { $in: futsalIds } })
+      .populate("futsal", "name")
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const stats = {
+      totalBookings: bookings.length,
+      pending: bookings.filter((booking) => booking.status === "pending").length,
+      active: bookings.filter(
+        (booking) => booking.status === "confirmed" && booking.date >= today,
+      ).length,
+      completed: bookings.filter(
+        (booking) => booking.status === "confirmed" && booking.date < today,
+      ).length,
+    };
+
+    const formattedBookings = bookings.map((booking) => ({
+      ...booking.toObject(),
+      customerName: booking.user?.name || "Unknown guest",
+      customerEmail: booking.user?.email || "",
+      futsalName: booking.futsal?.name || "Unknown venue",
+    }));
+
+    const recentBookings = formattedBookings.slice(0, 10);
+
+    res.json({ stats, bookings: formattedBookings, recentBookings });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // @desc    Get user bookings
 // @route   GET /api/bookings/mys
 // @access  Private
@@ -249,6 +290,7 @@ export {
   createBooking,
   getBookedSlots,
   getMyBookings,
+  getOwnerDashboardBookings,
   confirmBooking,
   checkExpiredBookings,
 };
