@@ -418,129 +418,132 @@ reservationSchema.statics.atomicConfirmBooking = async function(
   transactionRef,
   esewaRefId = null
 ) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
-  try {
-    const now = new Date();
-    const Slot = mongoose.model("Slot");
-    
-    // 1. Find and validate reservation
-    const reservation = await this.findOne({
-      _id: reservationId,
-      user: userId,
-    }).session(session);
-    
-    if (!reservation) {
-      await session.abortTransaction();
-      return { success: false, error: "RESERVATION_NOT_FOUND" };
-    }
-    
-    // 2. Check if already booked (idempotent)
-    if (reservation.status === ReservationStatus.BOOKED) {
-      await session.abortTransaction();
-      return { success: true, reservation, duplicate: true };
-    }
-    
-    // 3. Check if reservation is still active
-    if (!reservation.isActive()) {
-      await session.abortTransaction();
-      return { 
-        success: false, 
-        error: "RESERVATION_NOT_ACTIVE",
-        message: `Reservation is ${reservation.status}`,
-        refundRequired: reservation.paymentStatus === "PAID" || reservation.paymentStatus === "PENDING",
-      };
-    }
-    
-    // 4. Check if reservation expired
-    if (now > reservation.expiresAt) {
-      // Mark as expired and trigger refund
-      await this.findByIdAndUpdate(
-        reservationId,
-        {
-          $set: {
-            status: ReservationStatus.REFUND_PENDING,
-            paymentStatus: "REFUND_PENDING",
-            refundReason: "Reservation expired before payment confirmation",
-            refundAmount: reservation.totalPrice,
-            expiredAt: now,
-          },
-          $inc: { version: 1 },
-        },
-        { session }
-      );
-      
-      // Release slots
-      for (const hour of reservation.hours) {
-        await Slot.atomicRelease(
-          reservation.futsal,
-          reservation.date,
-          hour,
-          reservation._id,
-          session
-        );
+  return runWithRetry(async () => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const now = new Date();
+      const Slot = mongoose.model("Slot");
+
+      // 1. Find and validate reservation
+      const reservation = await this.findOne({
+        _id: reservationId,
+        user: userId,
+      }).session(session);
+
+      if (!reservation) {
+        await session.abortTransaction();
+        return { success: false, error: "RESERVATION_NOT_FOUND" };
       }
-      
-      await session.commitTransaction();
-      return {
-        success: false,
-        error: "RESERVATION_EXPIRED",
-        message: "Reservation expired. Refund will be processed.",
-        refundRequired: true,
-        refundAmount: reservation.totalPrice,
-      };
-    }
-    
-    // 5. Confirm all slots atomically
-    for (const hour of reservation.hours) {
-      const slot = await Slot.atomicConfirmBooking(
-        reservation.futsal,
-        reservation.date,
-        hour,
-        reservation._id,
-        userId,
-        session
-      );
-      
-      if (!slot) {
-        // Slot was released/taken - should not happen if logic is correct
+
+      // 2. Check if already booked (idempotent)
+      if (reservation.status === ReservationStatus.BOOKED) {
+        await session.abortTransaction();
+        return { success: true, reservation, duplicate: true };
+      }
+
+      // 3. Check if reservation is still active
+      if (!reservation.isActive()) {
         await session.abortTransaction();
         return {
           success: false,
-          error: "SLOT_LOST",
-          message: "Slot was released during payment. Refund will be processed.",
+          error: "RESERVATION_NOT_ACTIVE",
+          message: `Reservation is ${reservation.status}`,
+          refundRequired: reservation.paymentStatus === "PAID" || reservation.paymentStatus === "PENDING",
+        };
+      }
+
+      // 4. Check if reservation expired
+      if (now > reservation.expiresAt) {
+        // Mark as expired and trigger refund
+        await this.findByIdAndUpdate(
+          reservationId,
+          {
+            $set: {
+              status: ReservationStatus.REFUND_PENDING,
+              paymentStatus: "REFUND_PENDING",
+              refundReason: "Reservation expired before payment confirmation",
+              refundAmount: reservation.totalPrice,
+              expiredAt: now,
+            },
+            $inc: { version: 1 },
+          },
+          { session }
+        );
+
+        // Release slots
+        for (const hour of reservation.hours) {
+          await Slot.atomicRelease(
+            reservation.futsal,
+            reservation.date,
+            hour,
+            reservation._id,
+            session
+          );
+        }
+
+        await session.commitTransaction();
+        return {
+          success: false,
+          error: "RESERVATION_EXPIRED",
+          message: "Reservation expired. Refund will be processed.",
           refundRequired: true,
           refundAmount: reservation.totalPrice,
         };
       }
-    }
-    
-    // 6. Update reservation to BOOKED
-    const updatedReservation = await this.findByIdAndUpdate(
-      reservationId,
-      {
-        $set: {
-          status: ReservationStatus.BOOKED,
-          paymentStatus: "PAID",
-          transactionRef,
-          esewaRefId,
-          paymentCompletedAt: now,
+
+      // 5. Confirm all slots atomically
+      for (const hour of reservation.hours) {
+        const slot = await Slot.atomicConfirmBooking(
+          reservation.futsal,
+          reservation.date,
+          hour,
+          reservation._id,
+          userId,
+          session
+        );
+
+        if (!slot) {
+          // Slot was released/taken - should not happen if logic is correct
+          await session.abortTransaction();
+          return {
+            success: false,
+            error: "SLOT_LOST",
+            message: "Slot was released during payment. Refund will be processed.",
+            refundRequired: true,
+            refundAmount: reservation.totalPrice,
+          };
+        }
+      }
+
+      // 6. Update reservation to BOOKED
+      const updatedReservation = await this.findByIdAndUpdate(
+        reservationId,
+        {
+          $set: {
+            status: ReservationStatus.BOOKED,
+            paymentStatus: "PAID",
+            transactionRef,
+            esewaRefId,
+            paymentCompletedAt: now,
+          },
+          $inc: { version: 1 },
         },
-        $inc: { version: 1 },
-      },
-      { new: true, session }
-    );
-    
-    await session.commitTransaction();
-    return { success: true, reservation: updatedReservation };
-    
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
-  }
+        { new: true, session }
+      );
+
+      await session.commitTransaction();
+      return { success: true, reservation: updatedReservation };
+    } catch (error) {
+      if (session && session.inTransaction()) {
+        await session.abortTransaction().catch(() => {});
+      }
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  });
 };
 
 /**

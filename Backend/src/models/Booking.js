@@ -1,5 +1,36 @@
 import mongoose from "mongoose";
 
+const isTransientWriteConflict = (error) => {
+  return (
+    error?.code === 112 ||
+    error?.codeName === "WriteConflict" ||
+    error?.errorLabels?.has?.("TransientTransactionError") ||
+    /write conflict|yielding is disabled|try your operation/i.test(error?.message || "")
+  );
+};
+
+const runWithRetry = async (operation, retries = 3) => {
+  let lastError;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await operation(attempt);
+    } catch (error) {
+      lastError = error;
+
+      if (!isTransientWriteConflict(error) || attempt === retries) {
+        throw error;
+      }
+
+      const delayMs = 100 * (attempt + 1) + Math.floor(Math.random() * 50);
+      console.warn(`Transient MongoDB write conflict during booking confirmation, retrying (${attempt + 1}/${retries}) in ${delayMs}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw lastError;
+};
+
 const bookingSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -92,61 +123,65 @@ bookingSchema.statics.hasConfirmedConflict = async function (futsalId, date, tim
 
 // Static method to atomically confirm a booking (prevents race conditions)
 bookingSchema.statics.atomicConfirm = async function (bookingId, expectedVersion) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  return runWithRetry(async () => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-  try {
-    const booking = await this.findById(bookingId).session(session);
+    try {
+      const booking = await this.findById(bookingId).session(session);
 
-    if (!booking) {
-      await session.abortTransaction();
-      return { success: false, error: "Booking not found" };
-    }
+      if (!booking) {
+        await session.abortTransaction();
+        return { success: false, error: "Booking not found" };
+      }
 
-    // Check version hasn't changed (optimistic locking)
-    if (booking.version !== expectedVersion) {
-      await session.abortTransaction();
-      return { success: false, error: "Booking was modified, please retry" };
-    }
+      // Check version hasn't changed (optimistic locking)
+      if (booking.version !== expectedVersion) {
+        await session.abortTransaction();
+        return { success: false, error: "Booking was modified, please retry" };
+      }
 
-    // Check if slots are already confirmed by another booking
-    const conflict = await this.findOne({
-      futsal: booking.futsal,
-      date: booking.date,
-      status: "confirmed",
-      timeSlots: { $in: booking.timeSlots },
-      _id: { $ne: bookingId },
-    }).session(session);
+      // Check if slots are already confirmed by another booking
+      const conflict = await this.findOne({
+        futsal: booking.futsal,
+        date: booking.date,
+        status: "confirmed",
+        timeSlots: { $in: booking.timeSlots },
+        _id: { $ne: bookingId },
+      }).session(session);
 
-    if (conflict) {
-      // Another booking already confirmed these slots - mark for refund
-      booking.status = "refund_pending";
-      booking.paymentStatus = "refund_pending";
-      booking.refundReason = "Slot already booked by another user";
-      booking.refundAmount = booking.totalPrice;
+      if (conflict) {
+        // Another booking already confirmed these slots - mark for refund
+        booking.status = "refund_pending";
+        booking.paymentStatus = "refund_pending";
+        booking.refundReason = "Slot already booked by another user";
+        booking.refundAmount = booking.totalPrice;
+        await booking.save({ session });
+        await session.commitTransaction();
+        return {
+          success: false,
+          error: "Slot already booked",
+          refundRequired: true,
+          booking,
+        };
+      }
+
+      // No conflict - confirm the booking
+      booking.status = "confirmed";
+      booking.paymentStatus = "paid";
       await booking.save({ session });
       await session.commitTransaction();
-      return { 
-        success: false, 
-        error: "Slot already booked", 
-        refundRequired: true,
-        booking 
-      };
+
+      return { success: true, booking };
+    } catch (error) {
+      if (session && session.inTransaction()) {
+        await session.abortTransaction().catch(() => {});
+      }
+      throw error;
+    } finally {
+      session.endSession();
     }
-
-    // No conflict - confirm the booking
-    booking.status = "confirmed";
-    booking.paymentStatus = "paid";
-    await booking.save({ session });
-    await session.commitTransaction();
-
-    return { success: true, booking };
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
-  }
+  });
 };
 
 export default mongoose.model("Booking", bookingSchema);

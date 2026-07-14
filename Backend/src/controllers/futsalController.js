@@ -3,6 +3,7 @@ import Futsal from "../models/Futsal.js";
 import Booking from "../models/Booking.js";
 import { createFutsalSchema, updateFutsalSchema } from "../libs/schemas/futsal.schemas.js";
 import { haversineDistanceKm } from "../utils/location.js";
+import { isFuzzyMatch } from "../utils/fuzzySearch.js";
 
 const getValidationMessage = (result) =>
   result.error.issues[0]?.message || "Invalid request data";
@@ -94,7 +95,20 @@ const getFutsals = async (req, res) => {
   }
 
   try {
-    const futsals = await Futsal.find(query);
+    let futsals = await Futsal.find(query);
+
+    if (keyword) {
+      const normalizedKeyword = keyword.trim().toLowerCase();
+      futsals = futsals.filter((futsal) => {
+        const haystacks = [
+          futsal.name || "",
+          futsal.location?.address || "",
+          futsal.description || "",
+        ];
+
+        return haystacks.some((text) => isFuzzyMatch(normalizedKeyword, text));
+      });
+    }
 
     if (lat && lng) {
       const userLat = parseFloat(lat);
