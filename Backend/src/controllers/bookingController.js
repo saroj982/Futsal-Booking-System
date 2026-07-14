@@ -249,6 +249,69 @@ const getOwnerDashboardBookings = async (req, res) => {
   }
 };
 
+// @desc    Get refund requests for owner's venues
+// @route   GET /api/bookings/owner/refunds
+// @access  Private (Owner)
+const getOwnerRefunds = async (req, res) => {
+  try {
+    const futsals = await Futsal.find({ owner: req.user._id }).select("_id");
+    const futsalIds = futsals.map((futsal) => futsal._id);
+
+    const refunds = await Booking.find({
+      futsal: { $in: futsalIds },
+      status: "refund_pending",
+    })
+      .populate("user", "name email")
+      .populate("futsal", "name")
+      .sort({ updatedAt: -1 });
+
+    const formattedRefunds = refunds.map((refund) => ({
+      _id: refund._id,
+      user: refund.user,
+      futsal: refund.futsal,
+      amount: refund.refundAmount || refund.totalPrice,
+      reason: refund.refundReason || "Double booking conflict",
+      date: refund.date,
+      timeSlots: refund.timeSlots,
+      esewaRefId: refund.esewaRefId,
+      createdAt: refund.createdAt,
+      updatedAt: refund.updatedAt,
+    }));
+
+    res.json({ success: true, refunds: formattedRefunds, total: formattedRefunds.length });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// @desc    Mark an owner refund as completed
+// @route   PUT /api/bookings/owner/refunds/:id/complete
+// @access  Private (Owner)
+const completeOwnerRefund = async (req, res) => {
+  try {
+    const futsals = await Futsal.find({ owner: req.user._id }).select("_id");
+    const futsalIds = futsals.map((futsal) => futsal._id);
+
+    const refund = await Booking.findOne({
+      _id: req.params.id,
+      futsal: { $in: futsalIds },
+      status: "refund_pending",
+    });
+
+    if (!refund) {
+      return res.status(404).json({ message: "Refund request not found" });
+    }
+
+    refund.status = "cancelled";
+    refund.paymentStatus = "refunded";
+    await refund.save();
+
+    res.json({ success: true, message: "Refund marked as completed" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // @desc    Get user bookings
 // @route   GET /api/bookings/mys
 // @access  Private
@@ -291,6 +354,8 @@ export {
   getBookedSlots,
   getMyBookings,
   getOwnerDashboardBookings,
+  getOwnerRefunds,
+  completeOwnerRefund,
   confirmBooking,
   checkExpiredBookings,
 };
