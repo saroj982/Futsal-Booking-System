@@ -55,4 +55,66 @@ export const buildOwnerNotificationEmail = ({
   `,
 });
 
-export default { buildCustomerConfirmationEmail, buildOwnerNotificationEmail };
+export const buildCustomerCancellationEmail = ({
+  customerName,
+  futsalName,
+  date,
+  hours,
+  totalPrice,
+  refundAmount,
+  refundType,
+  refundPercentage,
+  reason,
+}) => ({
+  subject: `Booking Cancelled — ${futsalName}`,
+  html: `
+    <h2>Your booking has been cancelled</h2>
+    <p>Hi ${customerName},</p>
+    <p>Your booking at <strong>${futsalName}</strong> has been cancelled.</p>
+    <ul>
+      <li><strong>Date:</strong> ${date}</li>
+      <li><strong>Time slots:</strong> ${formatHours(hours)}</li>
+      <li><strong>Original amount:</strong> NPR ${totalPrice}</li>
+      <li><strong>Refund:</strong> ${refundAmount > 0 ? `NPR ${refundAmount} (${refundPercentage}%)` : "No refund"}</li>
+      <li><strong>Reason:</strong> ${reason || "No reason provided"}</li>
+    </ul>
+    <p>We have notified the venue owner about your cancellation.</p>
+  `,
+});
+
+export const buildOwnerCancellationEmail = ({
+  ownerName,
+  customerName,
+  customerEmail,
+  futsalName,
+  date,
+  hours,
+  totalPrice,
+  refundAmount,
+  refundType,
+  refundPercentage,
+  reason,
+}) => ({
+  subject: `Booking Cancelled by Customer — ${futsalName}`,
+  html: `
+    <h2>A booking was cancelled at your venue</h2>
+    <p>Hi ${ownerName},</p>
+    <p>A customer has cancelled a booking at <strong>${futsalName}</strong>.</p>
+    <ul>
+      <li><strong>Customer:</strong> ${customerName} (${customerEmail})</li>
+      <li><strong>Date:</strong> ${date}</li>
+      <li><strong>Time slots:</strong> ${formatHours(hours)}</li>
+      <li><strong>Original amount:</strong> NPR ${totalPrice}</li>
+      <li><strong>Refund amount:</strong> NPR ${refundAmount} (${refundPercentage}%)</li>
+      <li><strong>Reason:</strong> ${reason || "No reason provided"}</li>
+    </ul>
+    <p>Please review the refund request in your owner dashboard and process it accordingly.</p>
+  `,
+});
+
+export default {
+  buildCustomerConfirmationEmail,
+  buildOwnerNotificationEmail,
+  buildCustomerCancellationEmail,
+  buildOwnerCancellationEmail,
+};

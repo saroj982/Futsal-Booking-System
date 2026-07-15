@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { shouldTreatBookingAsConfirmed } from "../utils/bookingConfirmation.js";
 
 const isTransientWriteConflict = (error) => {
   return (
@@ -91,6 +92,9 @@ const bookingSchema = new mongoose.Schema({
   refundAmount: {
     type: Number,
   },
+  cancelledAt: {
+    type: Date,
+  },
   // Version for optimistic locking
   version: {
     type: Number,
@@ -133,6 +137,15 @@ bookingSchema.statics.atomicConfirm = async function (bookingId, expectedVersion
       if (!booking) {
         await session.abortTransaction();
         return { success: false, error: "Booking not found" };
+      }
+
+      if (shouldTreatBookingAsConfirmed(booking, expectedVersion)) {
+        await session.abortTransaction();
+        return {
+          success: true,
+          duplicate: true,
+          booking,
+        };
       }
 
       // Check version hasn't changed (optimistic locking)

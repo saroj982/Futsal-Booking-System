@@ -2,6 +2,14 @@ import Booking from "../models/Booking.js";
 import Futsal from "../models/Futsal.js";
 import config from "../config/config.js";
 import { ROLE_OWNER } from "../constants/roles.js";
+import { calculateRefundForCancellation } from "../utils/refundPolicy.js";
+import { sendBookingCancellationEmails } from "../services/email.service.js";
+
+const getBookingStartTime = (booking) => {
+  const [year, month, day] = booking.date.split("-").map(Number);
+  const startHour = Math.min(...booking.timeSlots);
+  return new Date(Date.UTC(year, month - 1, day, startHour, 0, 0));
+};
 
 // @desc    Create a new booking
 // @route   POST /api/bookings
@@ -183,6 +191,76 @@ const confirmBooking = async (req, res) => {
   }
 };
 
+// @desc    Cancel a booking
+// @route   POST /api/bookings/:id/cancel
+// @access  Private
+const cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    if (booking.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    if (["cancelled", "refund_pending"].includes(booking.status)) {
+      return res.status(400).json({ message: `Booking is already ${booking.status}` });
+    }
+
+    const cancelledAt = new Date();
+    const bookingStartTime = getBookingStartTime(booking);
+    const refundPolicy = calculateRefundForCancellation(
+      cancelledAt,
+      bookingStartTime,
+      booking.totalPrice,
+    );
+
+    const shouldCreateRefund = refundPolicy.refundAmount > 0;
+    booking.status = shouldCreateRefund ? "refund_pending" : "cancelled";
+    booking.cancelledAt = cancelledAt;
+    booking.refundReason = req.body.reason || "User cancelled";
+    booking.refundAmount = refundPolicy.refundAmount;
+    booking.paymentStatus = shouldCreateRefund ? "refund_pending" : booking.paymentStatus;
+
+    await booking.save();
+
+    await sendBookingCancellationEmails({
+      userId: booking.user,
+      futsalId: booking.futsal,
+      date: booking.date,
+      hours: booking.timeSlots,
+      totalPrice: booking.totalPrice,
+      refundAmount: refundPolicy.refundAmount,
+      refundType: refundPolicy.refundType,
+      refundPercentage: refundPolicy.refundPercentage,
+      reason: booking.refundReason,
+    });
+
+    if (req.io) {
+      req.io.emit("bookingUpdated", {
+        futsalId: booking.futsal,
+        date: booking.date,
+      });
+    }
+
+    res.json({
+      success: true,
+      message:
+        refundPolicy.refundAmount > 0
+          ? `Booking cancelled. Refund of Rs. ${refundPolicy.refundAmount} will be processed.`
+          : "Booking cancelled successfully.",
+      refundAmount: refundPolicy.refundAmount,
+      refundPercentage: refundPolicy.refundPercentage,
+      refundType: refundPolicy.refundType,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // @desc    Get booked slots for a futsal on a date
 // @route   GET /api/bookings/:futsalId
 // @access  Public
@@ -351,6 +429,7 @@ const checkExpiredBookings = async (io) => {
 
 export {
   createBooking,
+  cancelBooking,
   getBookedSlots,
   getMyBookings,
   getOwnerDashboardBookings,

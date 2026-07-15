@@ -216,6 +216,14 @@ const verifyEsewaPayment = async (req, res) => {
       const result = await Booking.atomicConfirm(booking._id, booking.version);
 
       if (result.success) {
+        if (result.duplicate) {
+          return res.json({
+            success: true,
+            message: "Payment successful! Booking confirmed.",
+            booking: result.booking,
+            duplicate: true,
+          });
+        }
         // Emit socket event for real-time updates
         if (req.io) {
           req.io.emit("bookingUpdated", {
