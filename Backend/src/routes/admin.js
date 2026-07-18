@@ -10,6 +10,7 @@ import Futsal from "../models/Futsal.js";
 import Booking from "../models/Booking.js";
 import { Reservation, ReservationStatus } from "../models/Reservation.js";
 import { PaymentTransaction, PaymentStatus } from "../models/PaymentTransaction.js";
+import { getActiveVenueQuery, normalizeFutsalForAdmin } from "../utils/adminDashboardData.js";
 
 const router = express.Router();
 
@@ -43,7 +44,7 @@ router.get("/stats", protect, admin, async (req, res) => {
       User.countDocuments({ role: ROLE_USER }),
       User.countDocuments({ role: ROLE_OWNER }),
       Futsal.countDocuments(),
-      Futsal.countDocuments({ isActive: true }),
+      Futsal.countDocuments(getActiveVenueQuery()),
       Booking.countDocuments(),
       Booking.countDocuments({ status: "confirmed" }),
       Booking.countDocuments({ status: "refund_pending" }),
@@ -275,7 +276,13 @@ router.get("/futsals", protect, admin, async (req, res) => {
     const search = req.query.search;
 
     let query = {};
-    if (status === "active") {
+    if (status === "approved") {
+      query.approvalStatus = "APPROVED";
+    } else if (status === "pending") {
+      query.approvalStatus = "PENDING";
+    } else if (status === "rejected") {
+      query.approvalStatus = "REJECTED";
+    } else if (status === "active") {
       query.isActive = true;
     } else if (status === "inactive") {
       query.isActive = false;
@@ -304,10 +311,10 @@ router.get("/futsals", protect, admin, async (req, res) => {
     ]);
     const bookingMap = new Map(bookingCounts.map(b => [b._id.toString(), b.count]));
 
-    const futsalsWithBookings = futsals.map(f => ({
-      ...f.toObject(),
-      bookingCount: bookingMap.get(f._id.toString()) || 0,
-    }));
+    const futsalsWithBookings = futsals.map((f) => normalizeFutsalForAdmin(
+      f.toObject(),
+      bookingMap.get(f._id.toString()) || 0,
+    ));
 
     res.json({
       success: true,
@@ -326,8 +333,60 @@ router.get("/futsals", protect, admin, async (req, res) => {
 });
 
 /**
+ * PUT /api/admin/futsals/:id/approve
+ * Approve a pending futsal for public listing
+ */
+router.put("/futsals/:id/approve", protect, admin, async (req, res) => {
+  try {
+    const futsal = await Futsal.findById(req.params.id);
+    if (!futsal) {
+      return res.status(404).json({ message: "Futsal not found" });
+    }
+
+    futsal.approvalStatus = "APPROVED";
+    futsal.isActive = true;
+    await futsal.save();
+
+    res.json({
+      success: true,
+      message: "Futsal approved and listed publicly",
+      futsal,
+    });
+  } catch (error) {
+    console.error("Approve futsal error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * PUT /api/admin/futsals/:id/reject
+ * Reject a pending futsal
+ */
+router.put("/futsals/:id/reject", protect, admin, async (req, res) => {
+  try {
+    const futsal = await Futsal.findById(req.params.id);
+    if (!futsal) {
+      return res.status(404).json({ message: "Futsal not found" });
+    }
+
+    futsal.approvalStatus = "REJECTED";
+    futsal.isActive = false;
+    await futsal.save();
+
+    res.json({
+      success: true,
+      message: "Futsal rejected",
+      futsal,
+    });
+  } catch (error) {
+    console.error("Reject futsal error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
  * PUT /api/admin/futsals/:id/toggle
- * Activate/Deactivate a futsal
+ * Activate/Deactivate an approved futsal
  */
 router.put("/futsals/:id/toggle", protect, admin, async (req, res) => {
   try {

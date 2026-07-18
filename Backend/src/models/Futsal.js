@@ -74,7 +74,12 @@ const futsalSchema = new mongoose.Schema({
   },
   isActive: {
     type: Boolean,
-    default: true,
+    default: false,
+  },
+  approvalStatus: {
+    type: String,
+    enum: ["PENDING", "APPROVED", "REJECTED"],
+    default: "PENDING",
   },
   createdAt: {
     type: Date,

@@ -1,122 +1,130 @@
 import User from "../models/User.js";
 import { generateToken } from "../utils/jwt.js";
-import authService from "../services/auth.service.js";
-import { ROLE_USER } from "../constants/roles.js";
-import { registerUserSchema } from "../libs/schemas/user.schemas.js";
+import {
+  registerUserSchema,
+  userSchema,
+} from "../libs/schemas/user.schemas.js";
 import {
   loginUserSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
 } from "../libs/schemas/auth.schemas.js";
+import authService from "../services/auth.service.js";
 
-const getValidationMessage = (result) =>
-  result.error.issues[0]?.message || "Invalid request data";
+const buildUserResponse = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  token: generateToken(user._id),
+});
 
-const registerUser = async (req, res) => {
-  const parsed = registerUserSchema.safeParse(req.body);
-
-  if (!parsed.success) {
-    return res.status(400).json({ message: getValidationMessage(parsed) });
-  }
-
-  const { name, email, password, role } = parsed.data;
-
+export const registerUser = async (req, res) => {
   try {
-    const userExists = await User.findOne({ email });
+    const parsed = registerUserSchema.parse(req.body);
 
-    if (userExists) {
+    const existingUser = await User.findOne({ email: parsed.email.toLowerCase() });
+    if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
     const user = await User.create({
-      name,
-      email,
-      password,
-      role: role || ROLE_USER,
+      name: parsed.name.trim(),
+      email: parsed.email.toLowerCase(),
+      password: parsed.password,
+      role: parsed.role || "user",
     });
 
-    if (user) {
-      res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id),
+    return res.status(201).json(buildUserResponse(user));
+  } catch (error) {
+    if (error.name === "ZodError") {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.issues.map((issue) => issue.message),
       });
-    } else {
-      res.status(400).json({ message: "Invalid user data" });
     }
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    return res.status(500).json({ message: error.message || "Registration failed" });
   }
 };
 
-const authUser = async (req, res) => {
-  const parsed = loginUserSchema.safeParse(req.body);
-
-  if (!parsed.success) {
-    return res.status(400).json({ message: getValidationMessage(parsed) });
-  }
-
-  const { email, password } = parsed.data;
-
+export const authUser = async (req, res) => {
   try {
-    const user = await User.findOne({ email });
+    const parsed = loginUserSchema.parse(req.body);
 
+    const user = await User.findOne({ email: parsed.email.toLowerCase() });
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    const isMatch = await user.matchPassword(parsed.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
     if (user.isBlocked) {
-      return res.status(403).json({
-        message: "Your account has been blocked. Please contact support.",
+      return res.status(403).json({ message: "Your account has been blocked" });
+    }
+
+    return res.json(buildUserResponse(user));
+  } catch (error) {
+    if (error.name === "ZodError") {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.issues.map((issue) => issue.message),
       });
     }
 
-    if (await user.matchPassword(password)) {
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id),
+    return res.status(500).json({ message: error.message || "Login failed" });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const parsed = forgotPasswordSchema.parse(req.body);
+    const result = await authService.forgotPassword(parsed.email.toLowerCase());
+    return res.json(result);
+  } catch (error) {
+    if (error.name === "ZodError") {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.issues.map((issue) => issue.message),
       });
-    } else {
-      res.status(401).json({ message: "Invalid email or password" });
     }
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    return res.status(500).json({ message: error.message || "Forgot password failed" });
   }
 };
 
-const forgotPassword = async (req, res) => {
+export const resetPassword = async (req, res) => {
   try {
-    const parsed = forgotPasswordSchema.safeParse(req.body);
+    const parsed = resetPasswordSchema.parse(req.body);
+    const result = await authService.resetPassword({
+      userId: parsed.userId,
+      token: parsed.token,
+      password: parsed.password,
+    });
 
-    if (!parsed.success) {
-      return res.status(400).json({ message: getValidationMessage(parsed) });
+    return res.json(result);
+  } catch (error) {
+    if (error.name === "ZodError") {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.issues.map((issue) => issue.message),
+      });
     }
 
-    const data = await authService.forgotPassword(parsed.data.email);
-    res.json(data);
-  } catch (error) {
-    res.status(error.status || 400).send(error.message);
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
+    return res.status(500).json({ message: error.message || "Reset password failed" });
   }
 };
 
-const resetPassword = async (req, res) => {
-  try {
-    const parsed = resetPasswordSchema.safeParse(req.body);
-
-    if (!parsed.success) {
-      return res.status(400).json({ message: getValidationMessage(parsed) });
-    }
-
-    const data = await authService.resetPassword(parsed.data);
-    res.json(data);
-  } catch (error) {
-    res.status(error.status || 400).send(error.message);
-  }
+export default {
+  registerUser,
+  authUser,
+  forgotPassword,
+  resetPassword,
 };
-
-export { registerUser, authUser, forgotPassword, resetPassword };

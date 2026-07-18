@@ -8,6 +8,49 @@ import { isFuzzyMatch } from "../utils/fuzzySearch.js";
 const getValidationMessage = (result) =>
   result.error.issues[0]?.message || "Invalid request data";
 
+export const buildPublicFutsalQuery = ({ keyword, lat, lng, radius }) => {
+  const approvalFilters = [
+    { approvalStatus: "APPROVED" },
+    { isActive: true },
+  ];
+
+  if (keyword) {
+    return {
+      $and: [
+        ...approvalFilters,
+        {
+          $or: [
+            { name: { $regex: keyword, $options: "i" } },
+            { "location.address": { $regex: keyword, $options: "i" } },
+          ],
+        },
+      ],
+    };
+  }
+
+  if (lat && lng) {
+    const maxDistance = (parseFloat(radius) || 10) * 1000;
+    return {
+      $and: [
+        ...approvalFilters,
+        {
+          location: {
+            $near: {
+              $geometry: {
+                type: "Point",
+                coordinates: [parseFloat(lng), parseFloat(lat)],
+              },
+              $maxDistance: maxDistance,
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  return { $and: approvalFilters };
+};
+
 // @desc    Register a new futsal
 // @route   POST /api/futsals
 // @access  Private/Owner
@@ -54,6 +97,8 @@ const createFutsal = async (req, res) => {
       parking: !!facilities?.parking,
     },
     rules,
+    approvalStatus: "PENDING",
+    isActive: false,
   });
 
   try {
@@ -69,30 +114,7 @@ const createFutsal = async (req, res) => {
 // @access  Public
 const getFutsals = async (req, res) => {
   const { keyword, lat, lng, radius } = req.query; // Radius in km
-
-  // If a keyword is provided, prioritize text search across all venues (no geo filter)
-  // so users can always find owner-listed venues by name/address.
-  let query = {};
-
-  if (keyword) {
-    query = {
-      $or: [
-        { name: { $regex: keyword, $options: "i" } },
-        { "location.address": { $regex: keyword, $options: "i" } },
-      ],
-    };
-  } else if (lat && lng) {
-    const maxDistance = (parseFloat(radius) || 10) * 1000; // Default 10km
-    query.location = {
-      $near: {
-        $geometry: {
-          type: "Point",
-          coordinates: [parseFloat(lng), parseFloat(lat)],
-        },
-        $maxDistance: maxDistance,
-      },
-    };
-  }
+  const query = buildPublicFutsalQuery({ keyword, lat, lng, radius });
 
   try {
     let futsals = await Futsal.find(query);
@@ -196,7 +218,7 @@ const getFutsalById = async (req, res) => {
 // @access  Private/Owner
 const getMyFutsals = async (req, res) => {
   try {
-    const futsals = await Futsal.find({ owner: req.user._id });
+    const futsals = await Futsal.find({ owner: req.user._id }).sort({ createdAt: -1 });
     res.json(futsals);
   } catch (err) {
     res.status(500).json({ message: err.message });
