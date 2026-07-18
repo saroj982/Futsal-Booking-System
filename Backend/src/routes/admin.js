@@ -30,7 +30,7 @@ router.get("/public/stats", async (req, res) => {
 
     const approvedVenues = await Futsal.countDocuments({
       isActive: true,
-      approvalStatus: "approved",
+      approvalStatus: "APPROVED",
     });
 
     res.json({
