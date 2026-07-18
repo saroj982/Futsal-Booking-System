@@ -19,6 +19,34 @@ const router = express.Router();
 // ============================================
 
 /**
+ * GET /api/admin/public/stats
+ * Public landing-page statistics based on successful bookings.
+ */
+router.get("/public/stats", async (req, res) => {
+  try {
+    const successfulBookings = await Booking.countDocuments({
+      $or: [{ status: "confirmed" }, { paymentStatus: "paid" }],
+    });
+
+    const approvedVenues = await Futsal.countDocuments({
+      isActive: true,
+      approvalStatus: "approved",
+    });
+
+    res.json({
+      success: true,
+      stats: {
+        bookedPlayers: successfulBookings * 10,
+        approvedVenues,
+      },
+    });
+  } catch (error) {
+    console.error("Public stats error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
  * GET /api/admin/stats
  * Get dashboard statistics
  */
