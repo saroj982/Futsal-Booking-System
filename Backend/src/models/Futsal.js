@@ -46,22 +46,8 @@ const futsalSchema = new mongoose.Schema({
     required: true,
   },
   facilities: {
-    changingRooms: {
-      type: Boolean,
-      default: false,
-    },
-    freeWater: {
-      type: Boolean,
-      default: false,
-    },
-    nightLight: {
-      type: Boolean,
-      default: false,
-    },
-    parking: {
-      type: Boolean,
-      default: false,
-    },
+    type: [String],
+    default: [],
   },
   rules: {
     type: [String],

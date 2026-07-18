@@ -7,12 +7,7 @@ const defaultFutsalRules = [
   "Maximum 10 players per field",
 ];
 
-const facilitiesSchema = z.object({
-  changingRooms: z.coerce.boolean().optional().default(false),
-  freeWater: z.coerce.boolean().optional().default(false),
-  nightLight: z.coerce.boolean().optional().default(false),
-  parking: z.coerce.boolean().optional().default(false),
-});
+const facilitiesSchema = z.array(z.string().trim().min(1, "Facility cannot be empty.")).optional().default([]);
 
 const baseFutsalSchema = {
   name: z.string().trim().min(3, "Venue name must be at least 3 characters long.").max(100, "Venue name must be at most 100 characters long."),
@@ -25,7 +20,7 @@ const baseFutsalSchema = {
   closeTime: z.coerce.number().int().min(1, "Close time must be between 1 and 23.").max(23, "Close time must be between 1 and 23."),
   openDays: z.array(z.string().min(3)).min(1, "Please select at least one open day."),
   images: z.array(z.string().url().or(z.string().min(1))).optional().default([]),
-  facilities: facilitiesSchema.optional().default({}),
+  facilities: facilitiesSchema.optional().default([]),
   rules: z.array(z.string().trim().min(1, "Rule cannot be empty.")).max(20, "Add up to 20 rules only.").optional().default(defaultFutsalRules),
 };
 

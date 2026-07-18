@@ -8,6 +8,36 @@ import { isFuzzyMatch } from "../utils/fuzzySearch.js";
 const getValidationMessage = (result) =>
   result.error.issues[0]?.message || "Invalid request data";
 
+export const normalizeFacilities = (facilities = []) => {
+  if (Array.isArray(facilities)) {
+    return [...new Set(facilities.map((item) => item?.trim()).filter(Boolean))];
+  }
+
+  if (facilities && typeof facilities === "object") {
+    const entries = Object.entries(facilities)
+      .filter(([, enabled]) => enabled)
+      .map(([key]) => {
+        switch (key) {
+          case "changingRooms":
+            return "Changing rooms";
+          case "freeWater":
+            return "Free water";
+          case "nightLight":
+            return "Night light";
+          case "parking":
+            return "Parking";
+          default:
+            return null;
+        }
+      })
+      .filter(Boolean);
+
+    return [...new Set(entries)];
+  }
+
+  return [];
+};
+
 export const buildPublicFutsalQuery = ({ keyword, lat, lng, radius }) => {
   const approvalFilters = [
     { approvalStatus: "APPROVED" },
@@ -90,12 +120,7 @@ const createFutsal = async (req, res) => {
     closeTime,
     openDays,
     images,
-    facilities: {
-      changingRooms: !!facilities?.changingRooms,
-      freeWater: !!facilities?.freeWater,
-      nightLight: !!facilities?.nightLight,
-      parking: !!facilities?.parking,
-    },
+    facilities: normalizeFacilities(facilities),
     rules,
     approvalStatus: "PENDING",
     isActive: false,
@@ -269,13 +294,8 @@ const updateFutsal = async (req, res) => {
     futsal.openTime = openTime ?? futsal.openTime;
     futsal.closeTime = closeTime ?? futsal.closeTime;
     futsal.openDays = openDays ?? futsal.openDays;
-    if (facilities) {
-      futsal.facilities = {
-        changingRooms: !!facilities.changingRooms,
-        freeWater: !!facilities.freeWater,
-        nightLight: !!facilities.nightLight,
-        parking: !!facilities.parking,
-      };
+    if (facilities !== undefined) {
+      futsal.facilities = normalizeFacilities(facilities);
     }
     if (Array.isArray(rules)) {
       futsal.rules = rules;
