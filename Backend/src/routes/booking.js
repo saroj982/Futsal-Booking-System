@@ -9,10 +9,12 @@ import {
   getOwnerRefunds,
   completeOwnerRefund,
   confirmBooking,
+  getOwnerAnalytics,
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
 
+router.get("/owner/analytics", protect, owner, getOwnerAnalytics);
 router.get("/owner/dashboard", protect, owner, getOwnerDashboardBookings);
 router.get("/owner/refunds", protect, owner, getOwnerRefunds);
 router.put("/owner/refunds/:id/complete", protect, owner, completeOwnerRefund);

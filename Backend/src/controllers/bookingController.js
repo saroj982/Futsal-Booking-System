@@ -427,6 +427,115 @@ const checkExpiredBookings = async (io) => {
   }
 };
 
+// @desc    Get owner analytics (real data from bookings)
+// @route   GET /api/bookings/owner/analytics
+// @access  Private (Owner)
+const getOwnerAnalytics = async (req, res) => {
+  try {
+    const futsals = await Futsal.find({ owner: req.user._id }).select("_id name pricePerHour");
+    const futsalIds = futsals.map((futsal) => futsal._id);
+
+    if (futsalIds.length === 0) {
+      return res.json({
+        revenue: 0,
+        occupancy: 0,
+        peakHour: "N/A",
+        avgBooking: 0,
+        bestDay: "N/A",
+        mostPopularSlot: "N/A",
+        totalConfirmedBookings: 0,
+        totalCompletedBookings: 0,
+        monthlyRevenue: 0,
+      });
+    }
+
+    const bookings = await Booking.find({ futsal: { $in: futsalIds } });
+
+    // Calculate revenue (confirmed bookings only)
+    const confirmedBookings = bookings.filter((b) => b.status === "confirmed");
+    const revenue = confirmedBookings.reduce((sum, booking) => sum + (booking.totalPrice || 0), 0);
+
+    // Calculate revenue for this month
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthlyBookings = confirmedBookings.filter((b) => new Date(b.createdAt) >= firstDayOfMonth);
+    const monthlyRevenue = monthlyBookings.reduce((sum, booking) => sum + (booking.totalPrice || 0), 0);
+
+    // Calculate average booking duration
+    const totalSlots = bookings.reduce((sum, booking) => sum + (booking.timeSlots?.length || 0), 0);
+    const avgBooking = bookings.length > 0 ? (totalSlots / bookings.length).toFixed(1) : 0;
+
+    // Find peak hour (most booked time slot)
+    const slotFrequency = {};
+    bookings.forEach((booking) => {
+      if (booking.timeSlots && Array.isArray(booking.timeSlots)) {
+        booking.timeSlots.forEach((slot) => {
+          slotFrequency[slot] = (slotFrequency[slot] || 0) + 1;
+        });
+      }
+    });
+
+    let peakHour = "N/A";
+    let maxBookings = 0;
+    Object.entries(slotFrequency).forEach(([hour, count]) => {
+      if (count > maxBookings) {
+        maxBookings = count;
+        peakHour = `${hour}:00`;
+      }
+    });
+
+    // Find best day (most bookings)
+    const dayFrequency = {};
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    bookings.forEach((booking) => {
+      if (booking.date) {
+        const date = new Date(booking.date + "T00:00:00");
+        const dayName = dayNames[date.getUTCDay()];
+        dayFrequency[dayName] = (dayFrequency[dayName] || 0) + 1;
+      }
+    });
+
+    let bestDay = "N/A";
+    let maxDayBookings = 0;
+    Object.entries(dayFrequency).forEach(([day, count]) => {
+      if (count > maxDayBookings) {
+        maxDayBookings = count;
+        bestDay = day;
+      }
+    });
+
+    // Calculate occupancy rate
+    // Get all futsals' operating hours for this month
+    let totalPossibleSlots = 0;
+    futsals.forEach((futsal) => {
+      const monthBookings = monthlyBookings.filter((b) => b.futsal.toString() === futsal._id.toString());
+      // Estimate based on operating hours (assume average 7 days a week, 10 hours per day = 70 hours per futsal per month)
+      const estimatedMonthlySlots = 30 * 10 * 1; // 30 days, 10 hours, 1 futsal
+      totalPossibleSlots += estimatedMonthlySlots;
+    });
+
+    const occupancy = totalPossibleSlots > 0 ? Math.round((monthlyBookings.reduce((sum, b) => sum + (b.timeSlots?.length || 0), 0) / totalPossibleSlots) * 100) : 0;
+
+    // Most popular slot (same as peak hour)
+    const mostPopularSlot = peakHour;
+
+    res.json({
+      revenue: Math.round(revenue),
+      occupancy: occupancy,
+      peakHour: peakHour,
+      avgBooking: parseFloat(avgBooking),
+      bestDay: bestDay,
+      mostPopularSlot: mostPopularSlot,
+      totalConfirmedBookings: confirmedBookings.length,
+      totalCompletedBookings: bookings.filter((b) => b.status === "confirmed" && new Date(b.date) < new Date()).length,
+      monthlyRevenue: Math.round(monthlyRevenue),
+    });
+  } catch (err) {
+    console.error("Error fetching owner analytics:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 export {
   createBooking,
   cancelBooking,
@@ -437,4 +546,5 @@ export {
   completeOwnerRefund,
   confirmBooking,
   checkExpiredBookings,
+  getOwnerAnalytics,
 };
